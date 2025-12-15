@@ -1,5 +1,5 @@
 "use client"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -47,6 +47,7 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const { data: session } = authClient.useSession()
+  const [isLoggingOut, startLogout] = useTransition()
   const router = useRouter()
 
   const name = session?.user?.name || user?.name || "User"
@@ -124,17 +125,21 @@ export function NavUser({
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault()
-                  authClient.signOut({
-                    fetchOptions: {
-                      onSuccess: () => {
-                        router.push("/")
-                      }
-                    }
+                  if (isLoggingOut) return
+                  startLogout(() => {
+                    authClient.signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          router.replace("/auth/signin")
+                          router.refresh()
+                        },
+                      },
+                    })
                   })
                 }}
               >
                 <LogOut />
-                Log out
+                {isLoggingOut ? "Signing out..." : "Log out"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

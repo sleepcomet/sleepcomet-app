@@ -61,11 +61,11 @@ export const auth = betterAuth({
               <tr>
                 <td style="text-align:center;padding:0 12px;">
                   <div style="font-size:18px;font-weight:600;color:#e5e7eb;">Your Magic Link is Ready</div>
-                  <p style="margin:12px 0 22px 0;font-size:13px;line-height:1.7;color:#cbd5e1;">Click the button below to sign in. If the button doesn’t work, copy and paste the link into your browser.</p>
+                  <p style="margin:12px 0 22px 0;font-size:12px;line-height:1.7;color:#cbd5e1;">Click the button below to sign in. If the button doesn’t work, copy and paste the link into your browser.</p>
                   <div style="margin:0 0 18px 0;">
                     <a href="${url}" style="display:inline-block;background:#e5e7eb;color:#0b0f19;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Sign in with Magic Link</a>
                   </div>
-                  <div style="font-size:12px;color:#94a3b8;word-break:break-all;">${url}</div>
+                  <div style="font-size:10px;color:#94a3b8;word-break:break-all;">${url}</div>
                 </td>
               </tr>
               <tr>
