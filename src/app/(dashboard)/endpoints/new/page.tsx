@@ -34,21 +34,22 @@ export default function NewEndpoint() {
     e.preventDefault()
     setIsLoading(true)
 
-    // TODO: Implement API call to create endpoint
-    console.log({
-      name,
-      url,
-      interval: parseInt(interval),
-      timeout: parseInt(requestTimeout),
-      alertsEnabled,
-      sslVerification,
-    })
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    setIsLoading(false)
-    router.push("/")
+    try {
+      const res = await fetch("/api/endpoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, url }),
+      })
+      if (!res.ok) {
+        setIsLoading(false)
+        return
+      }
+      const created = await res.json()
+      setIsLoading(false)
+      router.push(`/endpoints/${created.id}`)
+    } catch {
+      setIsLoading(false)
+    }
   }
 
   return (

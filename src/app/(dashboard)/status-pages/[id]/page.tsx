@@ -1,6 +1,6 @@
 "use client"
 
-import { use } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,77 +16,8 @@ import {
 } from "@/components/ui/table"
 import { ArrowLeft, Globe, ExternalLink, Settings, Users, Activity, AlertTriangle } from "lucide-react"
 
-// Mock data
-const statusPagesData: Record<string, {
-  name: string
-  slug: string
-  visibility: "public" | "private"
-  status: "operational" | "degraded" | "outage"
-  subscribers: number
-  lastUpdated: string
-  endpoints: { id: string; name: string; status: "up" | "down"; uptime: string }[]
-  recentIncidents: { id: string; title: string; status: string; date: string }[]
-}> = {
-  "1": {
-    name: "Public Status",
-    slug: "sleepcomet",
-    visibility: "public",
-    status: "operational",
-    subscribers: 245,
-    lastUpdated: "2 hours ago",
-    endpoints: [
-      { id: "1", name: "API Production", status: "up", uptime: "99.9%" },
-      { id: "2", name: "Web App", status: "up", uptime: "99.7%" },
-      { id: "3", name: "Landing Page", status: "up", uptime: "100%" },
-    ],
-    recentIncidents: [
-      { id: "1", title: "Brief API latency increase", status: "resolved", date: "Dec 10, 2024" },
-      { id: "2", title: "Scheduled maintenance", status: "resolved", date: "Dec 5, 2024" },
-    ],
-  },
-  "2": {
-    name: "Internal Status",
-    slug: "sleepcomet-internal",
-    visibility: "private",
-    status: "operational",
-    subscribers: 12,
-    lastUpdated: "30 min ago",
-    endpoints: [
-      { id: "1", name: "Internal API", status: "up", uptime: "99.5%" },
-      { id: "2", name: "Admin Panel", status: "up", uptime: "99.8%" },
-    ],
-    recentIncidents: [],
-  },
-  "3": {
-    name: "API Status",
-    slug: "sleepcomet-api",
-    visibility: "public",
-    status: "degraded",
-    subscribers: 89,
-    lastUpdated: "5 min ago",
-    endpoints: [
-      { id: "1", name: "REST API", status: "up", uptime: "98.5%" },
-      { id: "2", name: "GraphQL API", status: "down", uptime: "95.2%" },
-    ],
-    recentIncidents: [
-      { id: "1", title: "GraphQL service degradation", status: "investigating", date: "Dec 15, 2024" },
-    ],
-  },
-  "4": {
-    name: "Dev Environment",
-    slug: "sleepcomet-dev",
-    visibility: "private",
-    status: "outage",
-    subscribers: 5,
-    lastUpdated: "1 min ago",
-    endpoints: [
-      { id: "1", name: "Dev Server", status: "down", uptime: "85.0%" },
-    ],
-    recentIncidents: [
-      { id: "1", title: "Dev server outage", status: "identified", date: "Dec 15, 2024" },
-    ],
-  },
-}
+type Endpoint = { id: string; name: string; status: "up" | "down"; uptime?: number }
+type StatusPage = { id: string; name: string; slug: string; visibility: "public" | "private"; status: string; endpoints: Endpoint[]; updated_at?: string }
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -103,7 +34,17 @@ function getStatusBadge(status: string) {
 
 export default function StatusPageDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const page = statusPagesData[id] || statusPagesData["1"]
+  const [page, setPage] = useState<StatusPage | null>(null)
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      const res = await fetch(`/api/status-pages/${id}`, { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      if (active) setPage(data)
+    })()
+    return () => { active = false }
+  }, [id])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -116,8 +57,8 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{page.name}</h1>
-          {getStatusBadge(page.status)}
+          <h1 className="text-lg font-semibold">{page?.name || "Status Page"}</h1>
+          {getStatusBadge(page?.status || "operational")}
         </div>
       </header>
 
@@ -131,7 +72,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{page.status}</div>
+              <div className="text-2xl font-bold capitalize">{page?.status || "operational"}</div>
               <p className="text-xs text-muted-foreground">Current status</p>
             </CardContent>
           </Card>
@@ -142,7 +83,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               <Globe className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{page.endpoints.length}</div>
+              <div className="text-2xl font-bold">{page?.endpoints?.length || 0}</div>
               <p className="text-xs text-muted-foreground">Monitored endpoints</p>
             </CardContent>
           </Card>
@@ -153,7 +94,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               <Users className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{page.subscribers}</div>
+              <div className="text-2xl font-bold">—</div>
               <p className="text-xs text-muted-foreground">Email subscribers</p>
             </CardContent>
           </Card>
@@ -164,7 +105,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               <AlertTriangle className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{page.recentIncidents.length}</div>
+              <div className="text-2xl font-bold">—</div>
               <p className="text-xs text-muted-foreground">Recent incidents</p>
             </CardContent>
           </Card>
@@ -189,22 +130,22 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
             <div className="flex justify-between">
               <span className="text-muted-foreground">URL</span>
               <a
-                href={`${(process.env.NEXT_PUBLIC_STATUS_URL || 'https://status.sleepcomet.com')}/${page.slug}`}
+                href={`${(process.env.NEXT_PUBLIC_STATUS_URL || 'https://status.sleepcomet.com')}/${page?.slug || ''}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-mono flex items-center gap-1 hover:underline"
               >
-                {(process.env.NEXT_PUBLIC_STATUS_URL || 'https://status.sleepcomet.com')}/{page.slug}
+                {(process.env.NEXT_PUBLIC_STATUS_URL || 'https://status.sleepcomet.com')}/{page?.slug || ''}
                 <ExternalLink className="size-3" />
               </a>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Visibility</span>
-              <span className="capitalize">{page.visibility}</span>
+              <span className="capitalize">{page?.visibility || "public"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Updated</span>
-              <span>{page.lastUpdated}</span>
+              <span>{page?.updated_at ? new Date(page.updated_at).toLocaleString() : "—"}</span>
             </div>
           </CardContent>
         </Card>
@@ -225,7 +166,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {page.endpoints.map((endpoint) => (
+                {(page?.endpoints || []).map((endpoint) => (
                   <TableRow key={endpoint.id}>
                     <TableCell className="font-medium">{endpoint.name}</TableCell>
                     <TableCell>
@@ -233,7 +174,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
                         {endpoint.status === "up" ? "● Up" : "● Down"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{endpoint.uptime}</TableCell>
+                    <TableCell>{endpoint.uptime != null ? `${endpoint.uptime}%` : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -241,35 +182,13 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
 
-        {/* Recent Incidents */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Recent Incidents</CardTitle>
             <CardDescription>Past and ongoing incidents</CardDescription>
           </CardHeader>
           <CardContent>
-            {page.recentIncidents.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No recent incidents</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {page.recentIncidents.map((incident) => (
-                    <TableRow key={incident.id}>
-                      <TableCell className="font-medium">{incident.title}</TableCell>
-                      <TableCell className="capitalize">{incident.status}</TableCell>
-                      <TableCell className="text-muted-foreground">{incident.date}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <p className="text-sm text-muted-foreground text-center py-4">No recent incidents</p>
           </CardContent>
         </Card>
       </main>

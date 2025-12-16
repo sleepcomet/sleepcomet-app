@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -28,47 +29,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ExternalLink } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ExternalLink, ProportionsIcon, Loader2 } from "lucide-react"
 
-// Status pages mock data
-const statusPages = [
-  {
-    id: "1",
-    name: "Public Status",
-    slug: "sleepcomet",
-    visibility: "public",
-    endpoints: 5,
-    status: "operational",
-    lastUpdated: "2 hours ago",
-  },
-  {
-    id: "2",
-    name: "Internal Status",
-    slug: "sleepcomet-internal",
-    visibility: "private",
-    endpoints: 12,
-    status: "operational",
-    lastUpdated: "30 min ago",
-  },
-  {
-    id: "3",
-    name: "API Status",
-    slug: "sleepcomet-api",
-    visibility: "public",
-    endpoints: 3,
-    status: "degraded",
-    lastUpdated: "5 min ago",
-  },
-  {
-    id: "4",
-    name: "Dev Environment",
-    slug: "sleepcomet-dev",
-    visibility: "private",
-    endpoints: 8,
-    status: "outage",
-    lastUpdated: "1 min ago",
-  },
-]
+type StatusPage = { id: string; name: string; slug: string; visibility: "public" | "private"; status: string; updated_at?: string }
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -85,11 +48,22 @@ function getStatusBadge(status: string) {
 
 export default function StatusPagesPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
   const [visibilityFilter, setVisibilityFilter] = useState("all")
 
+  const { data: pages = [], isLoading, error } = useQuery<StatusPage[], Error>({
+    queryKey: ["status-pages"],
+    queryFn: async () => {
+      const res = await fetch("/api/status-pages", { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to load status pages")
+      return res.json()
+    },
+    refetchOnWindowFocus: true,
+  })
+
   // Filter status pages
-  const filteredPages = statusPages.filter((page) => {
+  const filteredPages = pages.filter((page) => {
     const matchesSearch =
       page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       page.slug.toLowerCase().includes(searchQuery.toLowerCase())
@@ -98,10 +72,11 @@ export default function StatusPagesPage() {
     return matchesSearch && matchesVisibility
   })
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    // TODO: Implement delete logic
-    console.log("Delete status page:", id)
+    const res = await fetch(`/api/status-pages/${id}`, { method: "DELETE" })
+    if (!res.ok) return
+    await queryClient.invalidateQueries({ queryKey: ["status-pages"] })
   }
 
   return (
@@ -151,36 +126,64 @@ export default function StatusPagesPage() {
           </Button>
         </div>
 
-        {/* Status Pages Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Status Pages</CardTitle>
-            <CardDescription>
-              {filteredPages.length} status page{filteredPages.length !== 1 ? "s" : ""} found
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Visibility</TableHead>
-                  <TableHead>Endpoints</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPages.length === 0 ? (
+        {isLoading ? (
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <Loader2 className="size-12 animate-spin text-muted-foreground" />
+          </div>
+        ) : pages.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Your First Status Page</CardTitle>
+              <CardDescription>Publish uptime and incidents for your users.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center gap-4 border rounded-lg p-10 text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-muted">
+                  <ProportionsIcon className="size-6 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-semibold">No status pages yet</div>
+                  <div className="text-sm text-muted-foreground">Create a public or private page to share status updates.</div>
+                </div>
+                <Button asChild>
+                  <Link href="/status-pages/new">
+                    <Plus className="size-4 mr-2" />
+                    New Status Page
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>All Status Pages</CardTitle>
+              <CardDescription>
+                {error ? "" : `${filteredPages.length} status page${filteredPages.length !== 1 ? "s" : ""} found`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No status pages found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Domain</TableHead>
+                    <TableHead>Visibility</TableHead>
+                    <TableHead>Endpoints</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ) : (
-                  filteredPages.map((page) => (
+                </TableHeader>
+                <TableBody>
+                  {error && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-destructive py-8">
+                        {error.message}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!error && filteredPages.map((page) => (
                     <TableRow
                       key={page.id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -195,9 +198,9 @@ export default function StatusPagesPage() {
                           {page.visibility === "public" ? "Public" : "Private"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{page.endpoints}</TableCell>
+                      <TableCell>—</TableCell>
                       <TableCell>{getStatusBadge(page.status)}</TableCell>
-                      <TableCell className="text-muted-foreground">{page.lastUpdated}</TableCell>
+                      <TableCell className="text-muted-foreground">{page.updated_at ? new Date(page.updated_at).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <Popover>
                           <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -255,12 +258,12 @@ export default function StatusPagesPage() {
                         </Popover>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   )

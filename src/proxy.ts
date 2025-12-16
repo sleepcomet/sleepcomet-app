@@ -35,7 +35,8 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL(`/status${pathname}`, request.url))
   }
 
-  if (hostname === appHost) {
+  const isLocal = hostname.startsWith('localhost') || hostname.startsWith('127.0.0.1')
+  if (hostname === appHost || isLocal) {
     if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
       return NextResponse.next()
     }
@@ -48,7 +49,7 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (hostname && !hostname.endsWith('vercel.app')) {
+  if (hostname && !hostname.endsWith('vercel.app') && !isLocal) {
     return NextResponse.rewrite(new URL(`/status/${hostname}${pathname}`, request.url))
   }
 

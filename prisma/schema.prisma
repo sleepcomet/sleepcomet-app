@@ -68,3 +68,57 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model Endpoint {
+  id         String    @id @default(uuid())
+  name       String
+  url        String
+  status     String    @default("up")
+  uptime     Float?
+  lastCheck  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  statusPages StatusPage[] @relation("StatusPagesOnEndpoints")
+
+  @@map("endpoints")
+}
+
+model StatusPage {
+  id         String    @id @default(uuid())
+  name       String
+  slug       String    @unique
+  visibility String    @default("public")
+  status     String    @default("operational")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  endpoints  Endpoint[] @relation("StatusPagesOnEndpoints")
+
+  @@map("status_pages")
+}
+
+enum IncidentStatus {
+  investigating
+  identified
+  monitoring
+  resolved
+}
+
+enum IncidentImpact {
+  critical
+  major
+  minor
+  none
+}
+
+model Incident {
+  id                 String          @id @default(uuid())
+  title              String
+  status             IncidentStatus
+  impact             IncidentImpact
+  startedAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  affectedComponents String[]        @db.Text
+  timeline           Json?
+
+  @@map("incidents")
+}

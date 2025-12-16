@@ -1,131 +1,21 @@
 "use client"
 
-import { use } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart"
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts"
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
+import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap } from "lucide-react"
 
-// Mock data - in real app this would come from API
-const endpointsData: Record<string, {
-  name: string
-  url: string
-  status: "up" | "down"
-  uptime: string
-  avgResponse: number
-  lastCheck: string
-  checksToday: number
-  incidentsMonth: number
-}> = {
-  "1": {
-    name: "API Production",
-    url: "https://api.sleepcomet.com/health",
-    status: "up",
-    uptime: "99.9%",
-    avgResponse: 124,
-    lastCheck: "30s ago",
-    checksToday: 2880,
-    incidentsMonth: 2,
-  },
-  "2": {
-    name: "Web App",
-    url: "https://app.sleepcomet.com",
-    status: "up",
-    uptime: "99.7%",
-    avgResponse: 89,
-    lastCheck: "25s ago",
-    checksToday: 2875,
-    incidentsMonth: 5,
-  },
-  "3": {
-    name: "Landing Page",
-    url: "https://sleepcomet.com",
-    status: "up",
-    uptime: "100%",
-    avgResponse: 45,
-    lastCheck: "15s ago",
-    checksToday: 2880,
-    incidentsMonth: 0,
-  },
-  "4": {
-    name: "Status Page",
-    url: "https://status.sleepcomet.com",
-    status: "down",
-    uptime: "98.2%",
-    avgResponse: 0,
-    lastCheck: "1m ago",
-    checksToday: 2850,
-    incidentsMonth: 12,
-  },
-  "5": {
-    name: "Docs",
-    url: "https://docs.sleepcomet.com",
-    status: "up",
-    uptime: "99.5%",
-    avgResponse: 156,
-    lastCheck: "45s ago",
-    checksToday: 2870,
-    incidentsMonth: 3,
-  },
-}
+type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; metrics?: any }
 
-// Response time over 24 hours
-const responseTimeData = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i}:00`,
-  responseTime: Math.floor(Math.random() * 100) + 50,
-  p95: Math.floor(Math.random() * 50) + 150,
-  p99: Math.floor(Math.random() * 100) + 200,
-}))
-
-// Uptime over 30 days
-const uptimeData = Array.from({ length: 30 }, (_, i) => ({
-  day: `Day ${i + 1}`,
-  uptime: Math.random() > 0.1 ? 100 : Math.floor(Math.random() * 20) + 80,
-}))
-
-// Status codes distribution
-const statusCodesData = [
-  { code: "2xx", count: 28450, fill: "hsl(var(--chart-1))" },
-  { code: "3xx", count: 320, fill: "hsl(var(--chart-2))" },
-  { code: "4xx", count: 85, fill: "hsl(var(--chart-3))" },
-  { code: "5xx", count: 25, fill: "hsl(var(--chart-5))" },
-]
-
-// Hourly checks
-const hourlyChecksData = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i}:00`,
-  successful: Math.floor(Math.random() * 10) + 110,
-  failed: Math.random() > 0.9 ? Math.floor(Math.random() * 5) : 0,
-}))
-
-// Response time distribution
-const responseDistribution = [
-  { range: "0-50ms", count: 1200 },
-  { range: "51-100ms", count: 2800 },
-  { range: "101-200ms", count: 1500 },
-  { range: "201-500ms", count: 300 },
-  { range: "500ms+", count: 80 },
-]
+const empty24h = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }))
+const empty30d = Array.from({ length: 30 }, (_, i) => ({ day: `Day ${i + 1}`, uptime: 0 }))
+const emptyStatus = [ { code: "2xx", count: 0 }, { code: "3xx", count: 0 }, { code: "4xx", count: 0 }, { code: "5xx", count: 0 } ]
+const emptyChecks = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, successful: 0, failed: 0 }))
+const emptyDist = [ { range: "0-50ms", count: 0 }, { range: "51-100ms", count: 0 }, { range: "101-200ms", count: 0 }, { range: "201-500ms", count: 0 }, { range: "500ms+", count: 0 } ]
 
 const responseChartConfig = {
   responseTime: { label: "Avg Response", color: "hsl(var(--chart-1))" },
@@ -138,7 +28,7 @@ const uptimeChartConfig = {
 } satisfies ChartConfig
 
 const statusCodesConfig = {
-  count: { label: "Requests" },
+  count: { label: "Requests", color: "hsl(var(--chart-1))" },
   "2xx": { label: "2xx Success", color: "hsl(var(--chart-1))" },
   "3xx": { label: "3xx Redirect", color: "hsl(var(--chart-2))" },
   "4xx": { label: "4xx Client Error", color: "hsl(var(--chart-3))" },
@@ -156,7 +46,47 @@ const distributionConfig = {
 
 export default function EndpointDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const endpoint = endpointsData[id] || endpointsData["1"]
+  const [endpoint, setEndpoint] = useState<Endpoint | null>(null)
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      const res = await fetch(`/api/endpoints/${id}`, { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      if (active) setEndpoint(data)
+    })()
+    return () => { active = false }
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const es = new EventSource(`/api/endpoints/${id}?stream=1`)
+    es.onmessage = (ev) => {
+      try {
+        const payload = JSON.parse(ev.data)
+        setEndpoint((prev) => {
+          if (!prev) return prev
+          return { ...prev, metrics: payload.metrics, last_check: payload.last_check }
+        })
+      } catch {}
+    }
+    return () => {
+      es.close()
+    }
+  }, [id])
+
+  const name = endpoint?.name || "Endpoint"
+  const status: "up" | "down" = endpoint?.status || "up"
+  const rt = (endpoint?.metrics?.responseTime24h || empty24h) as { hour: string; responseTime: number; p95: number; p99: number }[]
+  const up = (endpoint?.metrics?.uptime30d || empty30d) as { day: string; uptime: number }[]
+  const codes = (endpoint?.metrics?.statusCodesMonth || emptyStatus) as { code: string; count: number }[]
+  const checks = (endpoint?.metrics?.hourlyChecksToday || emptyChecks) as { hour: string; successful: number; failed: number }[]
+  const dist = (endpoint?.metrics?.responseDistribution || emptyDist) as { range: string; count: number }[]
+  const uptimeText = up.length ? `${up[up.length - 1].uptime}%` : endpoint?.uptime != null ? `${endpoint.uptime}%` : "—"
+  const lastCheckText = endpoint?.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"
+  const avgResponse = Math.round(rt.reduce((acc, d) => acc + d.responseTime, 0) / rt.length)
+  const checksToday = checks.reduce((acc, d) => acc + d.successful + d.failed, 0)
+  const incidentsMonth = endpoint?.metrics?.incidentsMonth ?? 0
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -169,9 +99,9 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{endpoint.name}</h1>
-          <Badge variant={endpoint.status === "up" ? "default" : "destructive"}>
-            {endpoint.status === "up" ? "● Up" : "● Down"}
+          <h1 className="text-lg font-semibold">{name}</h1>
+          <Badge variant={status === "up" ? "default" : "destructive"}>
+            {status === "up" ? "● Up" : "● Down"}
           </Badge>
         </div>
       </header>
@@ -186,7 +116,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <TrendingUp className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{endpoint.uptime}</div>
+              <div className="text-2xl font-bold">{uptimeText}</div>
               <p className="text-xs text-muted-foreground">Last 30 days</p>
             </CardContent>
           </Card>
@@ -197,7 +127,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <Zap className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{endpoint.avgResponse}ms</div>
+              <div className="text-2xl font-bold">{avgResponse}ms</div>
               <p className="text-xs text-muted-foreground">Last 24 hours</p>
             </CardContent>
           </Card>
@@ -208,7 +138,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{endpoint.checksToday.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{checksToday.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">Every 30 seconds</p>
             </CardContent>
           </Card>
@@ -219,7 +149,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <TrendingDown className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{endpoint.incidentsMonth}</div>
+              <div className="text-2xl font-bold">{incidentsMonth}</div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
           </Card>
@@ -236,11 +166,11 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           <CardContent className="grid gap-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">URL</span>
-              <span className="font-mono">{endpoint.url}</span>
+              <span className="font-mono">{endpoint?.url || "—"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Check</span>
-              <span>{endpoint.lastCheck}</span>
+              <span>{lastCheckText}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Check Interval</span>
@@ -263,15 +193,15 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <ChartContainer config={responseChartConfig} className="h-[250px] w-full">
-                <LineChart data={responseTimeData}>
+                <LineChart data={rt}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="hour" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval={3} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Line type="monotone" dataKey="responseTime" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="p95" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="p99" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="responseTime" stroke="var(--color-responseTime)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="p95" stroke="var(--color-p95)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="p99" stroke="var(--color-p99)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ChartContainer>
             </CardContent>
@@ -285,18 +215,12 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <ChartContainer config={uptimeChartConfig} className="h-[250px] w-full">
-                <AreaChart data={uptimeData}>
+                <AreaChart data={up}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} interval={4} />
                   <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area
-                    type="monotone"
-                    dataKey="uptime"
-                    stroke="hsl(var(--chart-1))"
-                    fill="hsl(var(--chart-1))"
-                    fillOpacity={0.3}
-                  />
+                  <Area type="monotone" dataKey="uptime" stroke="var(--color-uptime)" fill="var(--color-uptime)" fillOpacity={0.3} />
                 </AreaChart>
               </ChartContainer>
             </CardContent>
@@ -313,12 +237,12 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <ChartContainer config={statusCodesConfig} className="h-[200px] w-full">
-                <BarChart data={statusCodesData} layout="vertical">
+                <BarChart data={codes} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                   <YAxis dataKey="code" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={40} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" radius={4} />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={4} />
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -332,13 +256,13 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <ChartContainer config={checksChartConfig} className="h-[200px] w-full">
-                <BarChart data={hourlyChecksData}>
+                <BarChart data={checks}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="hour" tickLine={false} axisLine={false} tick={{ fontSize: 8 }} interval={3} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="successful" stackId="a" fill="hsl(var(--chart-1))" radius={[0, 0, 2, 2]} />
-                  <Bar dataKey="failed" stackId="a" fill="hsl(var(--chart-5))" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="successful" stackId="a" fill="var(--color-successful)" radius={[0, 0, 2, 2]} />
+                  <Bar dataKey="failed" stackId="a" fill="var(--color-failed)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -352,12 +276,12 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <ChartContainer config={distributionConfig} className="h-[200px] w-full">
-                <BarChart data={responseDistribution}>
+                <BarChart data={dist}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="range" tickLine={false} axisLine={false} tick={{ fontSize: 8 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={4} />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={4} />
                 </BarChart>
               </ChartContainer>
             </CardContent>

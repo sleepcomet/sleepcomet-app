@@ -1,6 +1,7 @@
 "use client"
 
 import { use, useState, useEffect, useMemo } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -21,74 +22,52 @@ import { ArrowLeft, Globe, Palette, Bell, Check, X, Loader2 } from "lucide-react
 // Mock taken slugs for validation (excluding own slug)
 const takenSlugs = ["public", "api", "internal", "dev", "prod", "main", "test"]
 
-// Mock data
-const statusPagesData: Record<string, {
-  name: string
-  slug: string
-  visibility: "public" | "private"
-  showIncidentHistory: boolean
-  showUptimeGraph: boolean
-  allowSubscriptions: boolean
-  customLogo: boolean
-}> = {
-  "1": {
-    name: "Public Status",
-    slug: "sleepcomet",
-    visibility: "public",
-    showIncidentHistory: true,
-    showUptimeGraph: true,
-    allowSubscriptions: true,
-    customLogo: false,
-  },
-  "2": {
-    name: "Internal Status",
-    slug: "sleepcomet-internal",
-    visibility: "private",
-    showIncidentHistory: true,
-    showUptimeGraph: false,
-    allowSubscriptions: false,
-    customLogo: true,
-  },
-  "3": {
-    name: "API Status",
-    slug: "sleepcomet-api",
-    visibility: "public",
-    showIncidentHistory: true,
-    showUptimeGraph: true,
-    allowSubscriptions: true,
-    customLogo: false,
-  },
-  "4": {
-    name: "Dev Environment",
-    slug: "sleepcomet-dev",
-    visibility: "private",
-    showIncidentHistory: false,
-    showUptimeGraph: false,
-    allowSubscriptions: false,
-    customLogo: false,
-  },
-}
+type Endpoint = { id: string; name: string; url: string }
 
 export default function EditStatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const pageData = statusPagesData[id] || statusPagesData["1"]
+  const queryClient = useQueryClient()
+  const { data: page } = useQuery<any>({
+    queryKey: ["status-page", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/status-pages/${id}`, { cache: "no-store" })
+      return res.json()
+    },
+  })
+  const { data: endpoints = [] } = useQuery<Endpoint[]>({
+    queryKey: ["endpoints"],
+    queryFn: async () => {
+      const res = await fetch("/api/endpoints", { cache: "no-store" })
+      return res.json()
+    },
+    refetchOnWindowFocus: false,
+  })
 
   const [isLoading, setIsLoading] = useState(false)
 
   // Form state
-  const [name, setName] = useState(pageData.name)
-  const [slug, setSlug] = useState(pageData.slug)
-  const [visibility, setVisibility] = useState(pageData.visibility)
-  const [showIncidentHistory, setShowIncidentHistory] = useState(pageData.showIncidentHistory)
-  const [showUptimeGraph, setShowUptimeGraph] = useState(pageData.showUptimeGraph)
-  const [allowSubscriptions, setAllowSubscriptions] = useState(pageData.allowSubscriptions)
-  const [customLogo, setCustomLogo] = useState(pageData.customLogo)
+  const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
+  const [visibility, setVisibility] = useState<"public" | "private">("public")
+  const [showIncidentHistory, setShowIncidentHistory] = useState(true)
+  const [showUptimeGraph, setShowUptimeGraph] = useState(true)
+  const [allowSubscriptions, setAllowSubscriptions] = useState(true)
+  const [customLogo, setCustomLogo] = useState(false)
+  const [selectedEndpointIds, setSelectedEndpointIds] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!page) return
+    setName(page.name ?? "")
+    setSlug(page.slug ?? "")
+    setVisibility((page.visibility as "public" | "private") ?? "public")
+    setSelectedEndpointIds((page.endpoints || []).map((e: any) => e.id))
+  }, [page])
 
   // Slug availability check
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
-  const originalSlug = pageData.slug
+  const originalSlug = page?.slug || ""
 
   // Check slug availability with debounce
   useEffect(() => {
@@ -120,25 +99,31 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (slugAvailable === false) return
+    if (slug !== originalSlug && slugAvailable === false) return
     setIsLoading(true)
-
-    // TODO: Implement API call to update status page
-    console.log({
-      name,
-      slug,
-      visibility,
-      showIncidentHistory,
-      showUptimeGraph,
-      allowSubscriptions,
-      customLogo,
-    })
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    setIsLoading(false)
-    router.push(`/status-pages/${id}`)
+    try {
+      const res = await fetch(`/api/status-pages/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, slug, visibility, endpointIds: selectedEndpointIds }),
+      })
+      if (res.status === 409) {
+        setSlugAvailable(false)
+        setIsLoading(false)
+        return
+      }
+      if (!res.ok) {
+        setIsLoading(false)
+        return
+      }
+      await res.json()
+      await queryClient.invalidateQueries({ queryKey: ["status-pages"] })
+      await queryClient.invalidateQueries({ queryKey: ["status-page", id] })
+      setIsLoading(false)
+      router.push(`/status-pages/${id}`)
+    } catch {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -220,7 +205,6 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                     </p>
                   )}
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="visibility">Visibility</Label>
                   <Select value={visibility} onValueChange={(v) => setVisibility(v as "public" | "private")}>
@@ -233,6 +217,41 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                     </SelectContent>
                   </Select>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Endpoints Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="size-4" />
+                  Endpoints
+                </CardTitle>
+                <CardDescription>
+                  Selecione os endpoints exibidos nesta status page
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {endpoints.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Nenhum endpoint disponível</div>
+                ) : (
+                  endpoints.map((ep) => (
+                    <label key={ep.id} className="flex items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedEndpointIds.includes(ep.id)}
+                        onChange={(e) => {
+                          setSelectedEndpointIds((prev) => {
+                            if (e.target.checked) return [...prev, ep.id]
+                            return prev.filter((id) => id !== ep.id)
+                          })
+                        }}
+                      />
+                      <span className="font-medium">{ep.name}</span>
+                      <span className="text-muted-foreground font-mono truncate max-w-[240px]">{ep.url}</span>
+                    </label>
+                  ))
+                )}
               </CardContent>
             </Card>
 
@@ -325,7 +344,7 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
               <Button type="button" variant="outline" asChild>
                 <Link href={`/status-pages/${id}`}>Cancel</Link>
               </Button>
-              <Button type="submit" disabled={isLoading || !name || !slug || computedSlugAvailable === false}>
+              <Button type="submit" disabled={isLoading || (slug !== originalSlug && computedSlugAvailable === false)}>
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
             </div>

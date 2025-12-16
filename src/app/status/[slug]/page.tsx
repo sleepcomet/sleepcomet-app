@@ -1,39 +1,37 @@
 "use client"
 
-import { use } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { CheckCircle, AlertTriangle, Monitor } from "lucide-react"
 import { ThemeSelect } from "@/components/theme-select"
 
-type Endpoint = { id: string; name: string; status: "operational" | "degraded" | "outage"; uptime: number }
+type Endpoint = { id: string; name: string; status: "operational" | "degraded" | "outage" | "up" | "down"; uptime?: number }
 type Page = { name: string; slug: string; status: "operational" | "degraded" | "outage"; endpoints: Endpoint[] }
-
-const statusPagesData: Record<string, Page> = {
-  "sleepcomet": {
-    name: "Public Status",
-    slug: "sleepcomet",
-    status: "operational",
-    endpoints: [
-      { id: "1", name: "API Production", status: "operational", uptime: 99.9 },
-      { id: "2", name: "Web App", status: "operational", uptime: 99.7 },
-      { id: "3", name: "Landing Page", status: "operational", uptime: 100 },
-    ],
-  },
-  "default": {
-    name: "System Status",
-    slug: "default",
-    status: "operational",
-    endpoints: [
-      { id: "1", name: "API", status: "operational", uptime: 100 },
-      { id: "2", name: "Website", status: "operational", uptime: 100 },
-    ],
-  }
-}
 
 export default function PublicStatusPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  // Fallback to default or sleepcomet if not found, just for demo robustness
-  const page = Object.values(statusPagesData).find(p => p.slug === slug) || statusPagesData["sleepcomet"] || statusPagesData["default"]
+  const [page, setPage] = useState<Page | null>(null)
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      const res = await fetch(`/api/status-pages/by-slug/${slug}`, { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      const mapped: Page = {
+        name: data.name,
+        slug: data.slug,
+        status: (data.status || "operational") as Page["status"],
+        endpoints: (data.endpoints || []).map((e: any) => ({
+          id: e.id,
+          name: e.name,
+          status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
+          uptime: e.uptime,
+        })),
+      }
+      if (active) setPage(mapped)
+    })()
+    return () => { active = false }
+  }, [slug])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -72,7 +70,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-neutral-800 dark:text-neutral-100">
             <Monitor className="size-6" />
-            <span>{page.name}</span>
+            <span>{page?.name || "Status"}</span>
           </div>
           <Link
             href="https://sleepcomet.com"
@@ -86,16 +84,16 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
       <main className="max-w-4xl mx-auto px-4 py-10 md:px-0 space-y-10">
 
         {/* Hero Status */}
-        <div className={`p-6 rounded-lg shadow-sm flex items-center gap-4 text-white ${getStatusBg(page.status)}`}>
-          {page.status === 'operational' ? <CheckCircle className="size-8 stroke-[2.5]" /> : <AlertTriangle className="size-8 stroke-[2.5]" />}
+        <div className={`p-6 rounded-lg shadow-sm flex items-center gap-4 text-white ${getStatusBg(page?.status || 'operational')}`}>
+          {(page?.status || 'operational') === 'operational' ? <CheckCircle className="size-8 stroke-[2.5]" /> : <AlertTriangle className="size-8 stroke-[2.5]" />}
           <span className="text-2xl font-bold tracking-tight">
-            {page.status === 'operational' ? 'All systems operational' : 'Some systems are experiencing issues'}
+            {(page?.status || 'operational') === 'operational' ? 'All systems operational' : 'Some systems are experiencing issues'}
           </span>
         </div>
 
         {/* Monitors List */}
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-          {page.endpoints.map((endpoint: Endpoint, index: number) => (
+          {(page?.endpoints || []).map((endpoint: Endpoint, index: number) => (
             <div
               key={endpoint.id}
               className={`p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors ${index !== page.endpoints.length - 1 ? 'border-b border-neutral-100 dark:border-neutral-800' : ''}`}

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -24,6 +26,7 @@ const takenSlugs = ["public", "api", "internal", "dev", "prod", "main", "test"]
 export default function NewStatusPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient()
 
   // Form state
   const [name, setName] = useState("")
@@ -33,6 +36,16 @@ export default function NewStatusPage() {
   const [showUptimeGraph, setShowUptimeGraph] = useState(true)
   const [allowSubscriptions, setAllowSubscriptions] = useState(true)
   const [customLogo, setCustomLogo] = useState(false)
+  const [selectedEndpointIds, setSelectedEndpointIds] = useState<string[]>([])
+
+  const { data: endpoints = [] } = useQuery<{ id: string; name: string; url: string }[]>({
+    queryKey: ["endpoints"],
+    queryFn: async () => {
+      const res = await fetch("/api/endpoints", { cache: "no-store" })
+      return res.json()
+    },
+    refetchOnWindowFocus: false,
+  })
 
   // Slug availability check
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
@@ -70,22 +83,23 @@ export default function NewStatusPage() {
     if (slugAvailable === false) return
     setIsLoading(true)
 
-    // TODO: Implement API call to create status page
-    console.log({
-      name,
-      slug,
-      visibility,
-      showIncidentHistory,
-      showUptimeGraph,
-      allowSubscriptions,
-      customLogo,
-    })
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    setIsLoading(false)
-    router.push("/status-pages")
+    try {
+      const res = await fetch("/api/status-pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, slug, visibility, endpointIds: selectedEndpointIds }),
+      })
+      if (!res.ok) {
+        setIsLoading(false)
+        return
+      }
+      await res.json()
+      await queryClient.invalidateQueries({ queryKey: ["status-pages"] })
+      setIsLoading(false)
+      router.push("/status-pages")
+    } catch {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -193,6 +207,41 @@ export default function NewStatusPage() {
                     </SelectContent>
                   </Select>
                 </div>
+            </CardContent>
+          </Card>
+
+            {/* Endpoints Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="size-4" />
+                  Endpoints
+                </CardTitle>
+                <CardDescription>
+                  Selecione os endpoints que aparecerão nesta status page
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {endpoints.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Nenhum endpoint disponível</div>
+                ) : (
+                  endpoints.map((ep) => (
+                    <label key={ep.id} className="flex items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedEndpointIds.includes(ep.id)}
+                        onChange={(e) => {
+                          setSelectedEndpointIds((prev) => {
+                            if (e.target.checked) return [...prev, ep.id]
+                            return prev.filter((id) => id !== ep.id)
+                          })
+                        }}
+                      />
+                      <span className="font-medium">{ep.name}</span>
+                      <span className="text-muted-foreground font-mono truncate max-w-[240px]">{ep.url}</span>
+                    </label>
+                  ))
+                )}
               </CardContent>
             </Card>
 

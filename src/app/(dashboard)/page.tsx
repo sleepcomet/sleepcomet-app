@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -28,61 +28,39 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } from "lucide-react"
 
-// Endpoints mock data
-const endpoints = [
-  {
-    id: "1",
-    name: "API Production",
-    url: "https://api.sleepcomet.com/health",
-    status: "up",
-    uptime: "99.9%",
-    responseTime: "124ms",
-    lastCheck: "30s ago",
-  },
-  {
-    id: "2",
-    name: "Web App",
-    url: "https://app.sleepcomet.com",
-    status: "up",
-    uptime: "99.7%",
-    responseTime: "89ms",
-    lastCheck: "25s ago",
-  },
-  {
-    id: "3",
-    name: "Landing Page",
-    url: "https://sleepcomet.com",
-    status: "up",
-    uptime: "100%",
-    responseTime: "45ms",
-    lastCheck: "15s ago",
-  },
-  {
-    id: "4",
-    name: "Status Page",
-    url: "https://status.sleepcomet.com",
-    status: "down",
-    uptime: "98.2%",
-    responseTime: "—",
-    lastCheck: "1m ago",
-  },
-  {
-    id: "5",
-    name: "Docs",
-    url: "https://docs.sleepcomet.com",
-    status: "up",
-    uptime: "99.5%",
-    responseTime: "156ms",
-    lastCheck: "45s ago",
-  },
-]
+type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string }
 
 export default function Dashboard() {
   const router = useRouter()
+  const [endpoints, setEndpoints] = useState<Endpoint[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        setIsLoading(true)
+        setError("")
+        const res = await fetch("/api/endpoints", { cache: "no-store" })
+        if (!res.ok) {
+          setError("Failed to load endpoints")
+          return
+        }
+        const data = await res.json()
+        if (active) setEndpoints(Array.isArray(data) ? data : [])
+      } catch {
+        setError("Failed to load endpoints")
+      } finally {
+        if (active) setIsLoading(false)
+      }
+    })()
+    return () => { active = false }
+  }, [])
 
   // Filter endpoints
   const filteredEndpoints = endpoints.filter((endpoint) => {
@@ -96,8 +74,11 @@ export default function Dashboard() {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    // TODO: Implement delete logic
-    console.log("Delete endpoint:", id)
+    ;(async () => {
+      const res = await fetch(`/api/endpoints/${id}`, { method: "DELETE" })
+      if (!res.ok) return
+      setEndpoints((prev) => prev.filter((ep) => ep.id !== id))
+    })()
   }
 
   return (
@@ -148,35 +129,64 @@ export default function Dashboard() {
         </div>
 
         {/* Endpoints Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Endpoints</CardTitle>
-            <CardDescription>
-              {filteredEndpoints.length} endpoint{filteredEndpoints.length !== 1 ? "s" : ""} found
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Uptime</TableHead>
-                  <TableHead>Response</TableHead>
-                  <TableHead>Last Check</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEndpoints.length === 0 ? (
+        {isLoading ? (
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <Loader2 className="size-12 animate-spin text-muted-foreground" />
+          </div>
+        ) : endpoints.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Start Monitoring</CardTitle>
+              <CardDescription>Add your first endpoint to begin tracking uptime and performance.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center gap-4 border rounded-lg p-10 text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-muted">
+                  <Globe className="size-6 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-semibold">No endpoints yet</div>
+                  <div className="text-sm text-muted-foreground">Create an endpoint to see real-time status and analytics.</div>
+                </div>
+                <Button asChild>
+                  <Link href="/endpoints/new">
+                    <Plus className="size-4 mr-2" />
+                    New Endpoint
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>All Endpoints</CardTitle>
+              <CardDescription>
+                {error ? "" : `${filteredEndpoints.length} endpoint${filteredEndpoints.length !== 1 ? "s" : ""} found`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No endpoints found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>URL</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Uptime</TableHead>
+                    <TableHead>Response</TableHead>
+                    <TableHead>Last Check</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ) : (
-                  filteredEndpoints.map((endpoint) => (
+                </TableHeader>
+                <TableBody>
+                  {error && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-destructive py-8">
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!error && filteredEndpoints.map((endpoint) => (
                     <TableRow
                       key={endpoint.id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -191,9 +201,9 @@ export default function Dashboard() {
                           {endpoint.status === "up" ? "● Up" : "● Down"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{endpoint.uptime}</TableCell>
-                      <TableCell>{endpoint.responseTime}</TableCell>
-                      <TableCell className="text-muted-foreground">{endpoint.lastCheck}</TableCell>
+                      <TableCell>{endpoint.uptime ? `${endpoint.uptime}%` : "—"}</TableCell>
+                      <TableCell>{"—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{endpoint.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <Popover>
                           <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -239,12 +249,12 @@ export default function Dashboard() {
                         </Popover>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   )
