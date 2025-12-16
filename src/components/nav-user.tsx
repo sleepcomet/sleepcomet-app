@@ -8,6 +8,7 @@ import { UpgradeToSoloModal } from "@/components/modals/upgrade-to-solo-modal"
 import {
   ChevronsUpDown,
   CreditCard,
+  Loader2,
   LogOut,
   Settings,
   Sparkles,
@@ -46,7 +47,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: isLoading } = authClient.useSession()
   const [isLoggingOut, startLogout] = useTransition()
   const router = useRouter()
 
@@ -70,13 +71,25 @@ export function NavUser({
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={avatar} alt={name} />
-                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                </Avatar>
+                {isLoading ? (
+                  <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-sidebar-accent">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={avatar} alt={name} />
+                    <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                  </Avatar>
+                )}
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{name}</span>
-                  <span className="truncate text-xs">{email}</span>
+                  {isLoading ? (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      <span className="truncate font-medium">{name}</span>
+                      <span className="truncate text-xs">{email}</span>
+                    </>
+                  )}
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
@@ -89,13 +102,25 @@ export function NavUser({
             >
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={avatar} alt={name} />
-                    <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                  </Avatar>
+                  {isLoading ? (
+                    <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-accent">
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={avatar} alt={name} />
+                      <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                    </Avatar>
+                  )}
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{name}</span>
-                    <span className="truncate text-xs">{email}</span>
+                    {isLoading ? (
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <>
+                        <span className="truncate font-medium">{name}</span>
+                        <span className="truncate text-xs">{email}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </DropdownMenuLabel>

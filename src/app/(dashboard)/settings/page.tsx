@@ -12,11 +12,14 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function SettingsPage() {
   const [emailAlerts, setEmailAlerts] = useState(true)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [image, setImage] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -24,13 +27,17 @@ export default function SettingsPage() {
   useEffect(() => {
     let active = true
     ;(async () => {
-      const res = await fetch("/api/user/profile", { cache: "no-store" })
-      if (!res.ok) return
-      const data = await res.json()
-      if (!active) return
-      setName(data.name || "")
-      setEmail(data.email || "")
-      setImage(data.image || null)
+      try {
+        const res = await fetch("/api/user/profile", { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!active) return
+        setName(data.name || "")
+        setEmail(data.email || "")
+        setImage(data.image || null)
+      } finally {
+        if (active) setIsLoading(false)
+      }
     })()
     return () => { active = false }
   }, [])
@@ -102,10 +109,16 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={image || "/avatars/shadcn.jpg"} alt="@user" />
-                <AvatarFallback>SC</AvatarFallback>
-              </Avatar>
+              {isLoading ? (
+                <div className="h-20 w-20 flex items-center justify-center rounded-full bg-muted">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={image || "/avatars/shadcn.jpg"} alt="@user" />
+                  <AvatarFallback>SC</AvatarFallback>
+                </Avatar>
+              )}
               <div className="flex items-center gap-3">
                 <Button variant="outline" onClick={handleAvatarClick} disabled={isUploading}>{isUploading ? (<Loader2 className="size-4 animate-spin" />) : ("Change Avatar")}</Button>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
@@ -114,11 +127,23 @@ export default function SettingsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Display Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                {isLoading ? (
+                  <div className="flex h-9 w-full items-center justify-start rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={email} disabled />
+                {isLoading ? (
+                  <div className="flex h-9 w-full items-center justify-start rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Input id="email" value={email} disabled />
+                )}
               </div>
             </div>
           </CardContent>
