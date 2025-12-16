@@ -5,7 +5,16 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const prisma = new PrismaClient() as any
+const prisma = new PrismaClient()
+
+type Metrics = {
+  responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
+  uptime30d: { day: string; uptime: number }[]
+  statusCodesMonth: { code: string; count: number }[]
+  hourlyChecksToday: { hour: string; successful: number; failed: number }[]
+  responseDistribution: { range: string; count: number }[]
+  incidentsMonth: number
+}
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
@@ -16,7 +25,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (!ep) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const url = new URL(req.url)
   const stream = url.searchParams.get("stream")
-  function buildMetrics(base: any) {
+  function buildMetrics(base: { status: "up" | "down"; uptime?: number }): Metrics {
     const now = Date.now()
     const responseTime24h = Array.from({ length: 24 }, (_, i) => ({
       hour: `${i}:00`,
@@ -60,29 +69,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const encoder = new TextEncoder()
     const ts = new TransformStream()
     const writer = ts.writable.getWriter()
-    let intervalId: any
     let done = false
-    const cleanup = () => {
-      if (done) return
-      done = true
-      if (intervalId) clearInterval(intervalId)
-      try { writer.close() } catch {}
-    }
     const write = (s: string) => {
       if (done) return
       writer.write(encoder.encode(s)).catch(() => {
         cleanup()
       })
     }
-    writer.closed.then(() => cleanup()).catch(() => cleanup())
-    try {
-      const abortSignal: AbortSignal | undefined = (req as any).signal
-      abortSignal?.addEventListener("abort", () => cleanup())
-    } catch {}
     const push = () => {
       if (done) return
       try {
-        const metrics = buildMetrics(ep)
+        const metrics = buildMetrics({
+          status: ep.status as "up" | "down",
+          uptime: typeof ep.uptime === "number" ? ep.uptime : undefined,
+        })
         const payload = JSON.stringify({ metrics, last_check: new Date().toISOString() })
         write(`data: ${payload}\n\n`)
       } catch {
@@ -90,7 +90,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
     }
     push()
-    intervalId = setInterval(push, 3000)
+    const intervalId = setInterval(push, 3000)
+    function cleanup() {
+      if (done) return
+      done = true
+      clearInterval(intervalId)
+      try { writer.close() } catch {}
+    }
+    writer.closed.then(() => cleanup()).catch(() => cleanup())
+    try {
+      req.signal?.addEventListener("abort", () => cleanup())
+    } catch {}
     return new Response(ts.readable, {
       headers: {
         "Content-Type": "text/event-stream",
@@ -100,7 +110,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       },
     })
   }
-  const metrics = buildMetrics(ep)
+  const metrics = buildMetrics({
+    status: ep.status as "up" | "down",
+    uptime: typeof ep.uptime === "number" ? ep.uptime : undefined,
+  })
   return NextResponse.json({ ...ep, metrics })
 }
 

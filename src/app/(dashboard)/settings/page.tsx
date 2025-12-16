@@ -9,10 +9,78 @@ import { ThemeSelect } from "@/components/theme-select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Loader2 } from "lucide-react"
 
 export default function SettingsPage() {
   const [emailAlerts, setEmailAlerts] = useState(true)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [image, setImage] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      const res = await fetch("/api/user/profile", { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      if (!active) return
+      setName(data.name || "")
+      setEmail(data.email || "")
+      setImage(data.image || null)
+    })()
+    return () => { active = false }
+  }, [])
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploading(true)
+    try {
+      const presignRes = await fetch("/api/uploads/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || "application/octet-stream" }),
+      })
+      if (!presignRes.ok) { setIsUploading(false); return }
+      const { uploadUrl, fileUrl } = await presignRes.json()
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      })
+      if (!putRes.ok) { setIsUploading(false); return }
+      setImage(fileUrl)
+      await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: fileUrl }),
+      })
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -35,24 +103,27 @@ export default function SettingsPage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                <AvatarImage src="/avatars/shadcn.jpg" alt="@sleepcomet" />
+                <AvatarImage src={image || "/avatars/shadcn.jpg"} alt="@user" />
                 <AvatarFallback>SC</AvatarFallback>
               </Avatar>
-              <Button variant="outline">Change Avatar</Button>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={handleAvatarClick} disabled={isUploading}>{isUploading ? (<Loader2 className="size-4 animate-spin" />) : ("Change Avatar")}</Button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Display Name</Label>
-                <Input id="name" defaultValue="Sleepcomet" />
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" defaultValue="example@email.com" disabled />
+                <Input id="email" value={email} disabled />
               </div>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
-            <Button>Save Changes</Button>
+            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : "Save Changes"}</Button>
           </CardFooter>
         </Card>
 

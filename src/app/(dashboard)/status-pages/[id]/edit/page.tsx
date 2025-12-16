@@ -28,7 +28,7 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params)
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: page } = useQuery<any>({
+  const { data: page } = useQuery<{ id: string; name: string; slug: string; visibility: "public" | "private"; endpoints: Endpoint[] }>({
     queryKey: ["status-page", id],
     queryFn: async () => {
       const res = await fetch(`/api/status-pages/${id}`, { cache: "no-store" })
@@ -58,10 +58,13 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     if (!page) return
-    setName(page.name ?? "")
-    setSlug(page.slug ?? "")
-    setVisibility((page.visibility as "public" | "private") ?? "public")
-    setSelectedEndpointIds((page.endpoints || []).map((e: any) => e.id))
+    const timer = setTimeout(() => {
+      setName(page.name ?? "")
+      setSlug(page.slug ?? "")
+      setVisibility((page.visibility as "public" | "private") ?? "public")
+      setSelectedEndpointIds((page.endpoints || []).map((e: Endpoint) => e.id))
+    }, 0)
+    return () => clearTimeout(timer)
   }, [page])
 
   // Slug availability check

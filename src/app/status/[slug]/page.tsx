@@ -21,7 +21,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
         name: data.name,
         slug: data.slug,
         status: (data.status || "operational") as Page["status"],
-        endpoints: (data.endpoints || []).map((e: any) => ({
+        endpoints: (data.endpoints || []).map((e: { id: string; name: string; status: "up" | "down"; uptime?: number }) => ({
           id: e.id,
           name: e.name,
           status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
@@ -96,7 +96,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
           {(page?.endpoints || []).map((endpoint: Endpoint, index: number) => (
             <div
               key={endpoint.id}
-              className={`p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors ${index !== page.endpoints.length - 1 ? 'border-b border-neutral-100 dark:border-neutral-800' : ''}`}
+              className={`p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors ${index !== ((page?.endpoints?.length ?? 0) - 1) ? 'border-b border-neutral-100 dark:border-neutral-800' : ''}`}
             >
               <div className="w-48 font-semibold text-sm text-neutral-700 dark:text-neutral-300 shrink-0">
                 {endpoint.name}

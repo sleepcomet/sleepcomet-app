@@ -5,7 +5,7 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const prisma = new PrismaClient() as any
+const prisma = new PrismaClient()
 
 export async function GET() {
   const endpoints = await prisma.endpoint.findMany({

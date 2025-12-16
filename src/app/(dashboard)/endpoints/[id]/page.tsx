@@ -9,7 +9,15 @@ import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLe
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap } from "lucide-react"
 
-type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; metrics?: any }
+type Metrics = {
+  responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
+  uptime30d: { day: string; uptime: number }[]
+  statusCodesMonth: { code: string; count: number }[]
+  hourlyChecksToday: { hour: string; successful: number; failed: number }[]
+  responseDistribution: { range: string; count: number }[]
+  incidentsMonth: number
+}
+type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; metrics?: Metrics }
 
 const empty24h = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }))
 const empty30d = Array.from({ length: 30 }, (_, i) => ({ day: `Day ${i + 1}`, uptime: 0 }))

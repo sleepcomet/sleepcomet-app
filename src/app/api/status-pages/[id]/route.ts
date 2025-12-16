@@ -5,7 +5,7 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const prisma = new PrismaClient() as any
+const prisma = new PrismaClient()
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: param } = await ctx.params
@@ -40,8 +40,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       select: { id: true, name: true, slug: true, visibility: true, status: true, createdAt: true, updatedAt: true, endpoints: { select: { id: true, name: true, url: true, status: true, uptime: true, lastCheck: true } } },
     })
     return NextResponse.json(updated)
-  } catch (err: any) {
-    if (String(err?.message || "").includes("Unique constraint failed") || err?.code === "P2002") {
+  } catch (err: unknown) {
+    const msg = String((err as { message?: string })?.message || "")
+    const code = (err as { code?: string })?.code
+    if (msg.includes("Unique constraint failed") || code === "P2002") {
       return NextResponse.json({ error: "Slug already taken" }, { status: 409 })
     }
     throw err
