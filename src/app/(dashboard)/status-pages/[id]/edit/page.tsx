@@ -178,6 +178,7 @@ export default function EditStatusPage({ params }: { params: Promise<{ id: strin
                     <div className="relative flex-1">
                       <Input
                         id="slug"
+                        autoComplete="off"
                         placeholder="my-company"
                         value={slug}
                         onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}

@@ -94,6 +94,7 @@ export function LoginForm({
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               placeholder="example@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

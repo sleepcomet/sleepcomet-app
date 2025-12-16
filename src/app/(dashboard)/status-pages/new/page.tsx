@@ -135,6 +135,7 @@ export default function NewStatusPage() {
                   <Label htmlFor="name">Page Name</Label>
                   <Input
                     id="name"
+                    autoComplete="off"
                     placeholder="e.g., Public Status"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -154,6 +155,7 @@ export default function NewStatusPage() {
                     <div className="relative flex-1">
                       <Input
                         id="slug"
+                        autoComplete="off"
                         placeholder="my-company"
                         value={slug}
                         onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}

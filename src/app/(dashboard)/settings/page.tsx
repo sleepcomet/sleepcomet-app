@@ -137,7 +137,7 @@ export default function SettingsPage() {
                     <Loader2 className="size-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
                 )}
               </div>
               <div className="space-y-2">
@@ -147,7 +147,7 @@ export default function SettingsPage() {
                     <Loader2 className="size-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <Input id="email" value={email} disabled />
+                  <Input id="email" autoComplete="email" value={email} disabled />
                 )}
               </div>
             </div>

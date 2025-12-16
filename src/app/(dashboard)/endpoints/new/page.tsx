@@ -85,6 +85,7 @@ export default function NewEndpoint() {
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
+                    autoComplete="off"
                     placeholder="e.g., API Production"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -100,6 +101,7 @@ export default function NewEndpoint() {
                   <Input
                     id="url"
                     type="url"
+                    autoComplete="off"
                     placeholder="https://api.example.com/health"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}

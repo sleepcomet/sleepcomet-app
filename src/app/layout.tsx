@@ -4,7 +4,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
-import Script from "next/script"
+import { GoogleAnalytics } from "@/components/google-analytics"
+import { MicrosoftClarity } from "@/components/microsoft-clarity"
 import { TurboInit } from "@/components/turbo-init";
 import { UmamiAnalytics } from "@/components/umami-analytics";
 import "./globals.css";
@@ -47,17 +48,8 @@ export default function RootLayout({
           <UmamiAnalytics />
           <SpeedInsights />
           <Analytics />
-          {isProduction && clarityId && (
-            <Script id="clarity" strategy="afterInteractive">
-              {`
-                (function(c,l,a,r,i,t,y){
-                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                })(window, document, "clarity", "script", "${clarityId}");
-              `}
-            </Script>
-          )}
+          {isProduction && clarityId && <MicrosoftClarity projectId={clarityId} />}
+          {isProduction && gaId && <GoogleAnalytics gaId={gaId} />}
           <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>
