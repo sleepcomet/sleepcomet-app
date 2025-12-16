@@ -54,14 +54,6 @@ export default function RootLayout({
               `}
             </Script>
           )}
-          {isProduction && gaId && (
-            <>
-              <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
-              <Script id="gtag-init" strategy="afterInteractive">
-                {`window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', '${gaId}');`}
-              </Script>
-            </>
-          )}
           <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>
