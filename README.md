@@ -9,6 +9,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Better Auth](https://img.shields.io/badge/Auth-Better_Auth-success?style=for-the-badge&logo=security&logoColor=white)](https://www.better-auth.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Turbo Drive](https://img.shields.io/badge/Turbo_Drive-8.0-red?style=for-the-badge&logo=hotwire&logoColor=white)](https://turbo.hotwired.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 ---
@@ -36,6 +37,7 @@ We believe in **Open Source** and building tools that developers love to use.
 - **Authentication:** [Better Auth](https://www.better-auth.com/)
 - **UI Components:** [Shadcn UI](https://ui.shadcn.com/)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Navigation:** [Turbo Drive (@hotwired/turbo)](https://turbo.hotwired.dev/)
 - **State Management:** [TanStack Query (React Query)](https://tanstack.com/query/latest)
 - **Email:** [Resend](https://resend.com/)
 

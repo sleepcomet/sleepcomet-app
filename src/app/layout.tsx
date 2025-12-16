@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
+import { TurboInit } from "@/components/turbo-init";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({
         cz-shortcut-listen="true"
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <TurboInit />
           <SpeedInsights />
           <Analytics />
           {isProduction && clarityId && (
