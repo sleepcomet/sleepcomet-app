@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
 import { TurboInit } from "@/components/turbo-init";
+import { UmamiAnalytics } from "@/components/umami-analytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,6 +44,7 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <TurboInit />
+          <UmamiAnalytics />
           <SpeedInsights />
           <Analytics />
           {isProduction && clarityId && (
