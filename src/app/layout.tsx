@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,6 +30,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clarityId = process.env.NODE_ENV === "production" ? process.env.NEXT_PUBLIC_CLARITY_ID_PROD : ""
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -38,6 +40,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SpeedInsights />
           <Analytics />
+          {clarityId ? (
+            <Script id="clarity" strategy="afterInteractive">
+              {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`}
+            </Script>
+          ) : null}
           <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>
