@@ -12,35 +12,26 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
 
-import { Skeleton } from "@/components/ui/skeleton"
+import { authClient } from "@/lib/auth-client"
+import { toast } from "sonner"
 
 export default function SettingsPage() {
   const [emailAlerts, setEmailAlerts] = useState(true)
+  const { data: session, isPending: isLoading } = authClient.useSession()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [image, setImage] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    let active = true
-    ;(async () => {
-      try {
-        const res = await fetch("/api/user/profile", { cache: "no-store" })
-        if (!res.ok) return
-        const data = await res.json()
-        if (!active) return
-        setName(data.name || "")
-        setEmail(data.email || "")
-        setImage(data.image || null)
-      } finally {
-        if (active) setIsLoading(false)
-      }
-    })()
-    return () => { active = false }
-  }, [])
+    if (session?.user) {
+      setName(session.user.name || "")
+      setEmail(session.user.email || "")
+      setImage(session.user.image || null)
+    }
+  }, [session])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -56,20 +47,32 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: file.name, contentType: file.type || "application/octet-stream" }),
       })
-      if (!presignRes.ok) { setIsUploading(false); return }
+      if (!presignRes.ok) { 
+        toast.error("Failed to get upload URL")
+        setIsUploading(false)
+        return 
+      }
       const { uploadUrl, fileUrl } = await presignRes.json()
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type || "application/octet-stream" },
         body: file,
       })
-      if (!putRes.ok) { setIsUploading(false); return }
-      setImage(fileUrl)
-      await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: fileUrl }),
+      if (!putRes.ok) { 
+        toast.error("Failed to upload image")
+        setIsUploading(false)
+        return 
+      }
+      
+      await authClient.updateUser({
+        image: fileUrl
       })
+      
+      setImage(fileUrl)
+      toast.success("Avatar updated successfully")
+    } catch (err) {
+      toast.error("An error occurred")
+      console.error(err)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -79,11 +82,13 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+      await authClient.updateUser({
+        name: name
       })
+      toast.success("Profile updated successfully")
+    } catch (err) {
+      toast.error("Failed to update profile")
+      console.error(err)
     } finally {
       setIsSaving(false)
     }
