@@ -51,10 +51,6 @@ export function NavUser({
   const [isLoggingOut, startLogout] = useTransition()
   const router = useRouter()
 
-  if (!isLoading && !session && !user) {
-    return null
-  }
-
   const name = session?.user?.name || user?.name || "User"
   const email = session?.user?.email || user?.email || ""
   const avatar = session?.user?.image || user?.avatar || ""
@@ -64,6 +60,10 @@ export function NavUser({
     const fromEmail = email?.split("@")[0]?.slice(0, 2).toUpperCase()
     return fromEmail || "US"
   }, [name, email])
+
+  if (!isLoading && !session && !user) {
+    return null
+  }
 
   return (
     <>
@@ -168,7 +168,7 @@ export function NavUser({
                 }}
               >
                 <LogOut />
-                {isLoggingOut ? "Signing out..." : "Log out"}
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

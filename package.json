@@ -6,10 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.1",
     "@hookform/resolvers": "^5.2.2",
     "@hotwired/turbo": "^8.0.20",
     "@prisma/adapter-pg": "^5.22.0",
@@ -32,6 +32,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
+    "gsap": "^3.14.2",
     "lucide-react": "^0.561.0",
     "next": "16.0.10",
     "next-themes": "^0.4.6",
