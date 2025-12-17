@@ -6,9 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "node -e \"if(process.env.NODE_ENV === 'production'){require('child_process').execSync('prisma generate', {stdio: 'inherit'})}\""
   },
   "dependencies": {
     "@gsap/react": "^2.1.1",
