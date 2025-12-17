@@ -56,7 +56,7 @@ export function LoginForm({
     e.preventDefault()
     setIsLoading(true)
     
-    const origin = window.location.origin
+    const origin = process.env.NEXT_PUBLIC_CONSOLE_URL || window.location.origin
     const callbackURL = plan ? `${origin}/?plan=${plan}${interval ? `&interval=${interval}` : ""}` : `${origin}/`
 
     try {

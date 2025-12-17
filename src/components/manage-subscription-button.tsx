@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 export function ManageSubscriptionButton() {
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleManage = async () => {
     try {
@@ -20,7 +22,7 @@ export function ManageSubscriptionButton() {
       }
 
       const { url } = await res.json()
-      window.location.href = url
+      router.push(url)
     } catch {
       toast.error("Something went wrong. Please try again.")
     } finally {

@@ -16,7 +16,11 @@ export async function getUserSubscription(userId: string) {
       
       // Check if plan matches
       const priceId = stripeSub.items.data[0].price.id;
-      const plan = getPlanByPriceId(priceId);
+      let plan = getPlanByPriceId(priceId);
+
+      if (!plan && stripeSub.metadata?.plan) {
+         plan = stripeSub.metadata.plan as PlanType;
+      }
       
       // If plan is active and different from DB, or if status changed (e.g. canceled)
       const isActive = stripeSub.status === 'active' || stripeSub.status === 'trialing';

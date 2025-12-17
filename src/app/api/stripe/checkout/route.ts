@@ -136,6 +136,12 @@ export async function POST(req: Request) {
       ],
       metadata: {
         userId: session.user.id,
+        plan: selectedPlan.slug.toUpperCase(),
+      },
+      subscription_data: {
+        metadata: {
+          plan: selectedPlan.slug.toUpperCase(),
+        },
       },
       success_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing?canceled=true`,

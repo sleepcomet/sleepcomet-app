@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { getPlanByPriceId } from "@/config/plans";
+import { getPlanByPriceId, PlanType } from "@/config/plans";
 import Stripe from "stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -36,7 +36,12 @@ export async function POST(req: Request) {
        try {
          const sub = await stripe.subscriptions.retrieve(subscriptionId);
          const priceId = sub.items.data[0].price.id;
-         const plan = getPlanByPriceId(priceId);
+         let plan = getPlanByPriceId(priceId);
+
+         // Fallback to metadata
+         if (!plan && session.metadata?.plan) {
+            plan = session.metadata.plan as PlanType;
+         }
 
          if (!plan) {
            console.error("[STRIPE_WEBHOOK] PLAN NOT FOUND for priceId:", priceId);
@@ -80,7 +85,11 @@ export async function POST(req: Request) {
       try {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = sub.items.data[0].price.id;
-        const plan = getPlanByPriceId(priceId);
+        let plan = getPlanByPriceId(priceId);
+
+        if (!plan && sub.metadata?.plan) {
+            plan = sub.metadata.plan as PlanType;
+         }
 
         const dbSub = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: subscriptionId }
@@ -106,7 +115,11 @@ export async function POST(req: Request) {
     try {
       const sub = event.data.object as Stripe.Subscription;
       const priceId = sub.items.data[0].price.id;
-      const plan = getPlanByPriceId(priceId);
+      let plan = getPlanByPriceId(priceId);
+
+      if (!plan && sub.metadata?.plan) {
+           plan = sub.metadata.plan as PlanType;
+       }
 
       const dbSub = await prisma.subscription.findUnique({
         where: { stripeSubscriptionId: sub.id }
