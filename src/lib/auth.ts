@@ -11,7 +11,7 @@ const getCookieDomain = () => {
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || "";
   try {
     const hostname = new URL(websiteUrl).hostname;
-    if (hostname === "localhost") return undefined;
+    if (hostname === "localhost" || hostname.endsWith(".vercel.app")) return undefined;
     const parts = hostname.split('.');
     if (parts.length >= 2) {
       return "." + parts.slice(-2).join('.');

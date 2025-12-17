@@ -16,8 +16,13 @@ export const config = {
 }
 
 function toHost(url: string | undefined, fallback: string) {
-  const v = (url || '').replace(/^https?:\/\//, '').trim()
-  return v || fallback
+  if (!url) return fallback;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    const v = url.replace(/^https?:\/\//, "").split("/")[0].trim();
+    return v || fallback;
+  }
 }
 
 export default async function proxy(request: NextRequest) {
