@@ -33,7 +33,7 @@ export default function GlobalError({
               <p>A critical error occurred. Please try refreshing the page.</p>
             </CardContent>
             <CardFooter className="justify-center">
-              <Button onClick={() => window.location.reload()} variant="default" className="gap-2">
+              <Button onClick={() => reset()} variant="default" className="gap-2">
                 <RefreshCw className="size-4" />
                 Refresh Page
               </Button>

@@ -3,7 +3,8 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
-import { UpgradeToSoloModal } from "@/components/modals/upgrade-to-solo-modal"
+import { UpgradeModal } from "@/components/modals/upgrade-to-solo-modal"
+import { getNextPlan } from "@/config/plans"
 
 import {
   ChevronsUpDown,
@@ -38,18 +39,22 @@ import { authClient } from "@/lib/auth-client"
 
 export function NavUser({
   user,
+  userPlan = "free",
 }: {
   user?: {
     name: string
     email: string
     avatar: string
   }
+  userPlan?: string
 }) {
   const { isMobile } = useSidebar()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const { data: session, isPending: isLoading } = authClient.useSession()
   const [isLoggingOut, startLogout] = useTransition()
   const router = useRouter()
+  
+  const nextPlan = getNextPlan(userPlan)
 
   const name = session?.user?.name || user?.name || "User"
   const email = session?.user?.email || user?.email || ""
@@ -129,12 +134,17 @@ export function NavUser({
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onSelect={() => setShowUpgradeModal(true)}>
-                  <Sparkles />
-                  Upgrade to Solo
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+              {nextPlan && (
+                <DropdownMenuGroup>
+                  <DropdownMenuItem 
+                    onSelect={() => setShowUpgradeModal(true)}
+                    className="bg-primary/10 text-primary focus:bg-primary/20 focus:text-primary cursor-pointer"
+                  >
+                    <Sparkles className="size-4 text-primary" />
+                    <span className="font-medium">Upgrade to {nextPlan.name.replace(" Plan", "")}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
@@ -174,7 +184,11 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <UpgradeToSoloModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal} 
+        plan={nextPlan || undefined} 
+      />
     </>
   )
 }

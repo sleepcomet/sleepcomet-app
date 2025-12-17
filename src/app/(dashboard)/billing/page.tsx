@@ -1,12 +1,30 @@
-"use client"
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getUserPlanUsage } from "@/lib/subscription";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { CreditCard, Check, X } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { CreditCard, Zap } from "lucide-react"
+import { ManageSubscriptionButton } from "@/components/manage-subscription-button";
 
-export default function BillingPage() {
+export default async function BillingPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/auth/signin");
+  }
+
+  const { plan, usage, limits } = await getUserPlanUsage(session.user.id);
+
+  const usagePercent = (usage.endpoints / limits.endpoints) * 100;
+  const statusPagesPercent = (usage.statusPages / limits.statusPages) * 100;
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
@@ -22,9 +40,9 @@ export default function BillingPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="text-2xl">Free Plan</CardTitle>
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>
-                  You are currently on the Free plan.
+                  You are currently on the {plan.name}.
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="px-3 py-1 text-sm">
@@ -34,21 +52,56 @@ export default function BillingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-lg bg-background p-4 border">
+              <div className="rounded-lg bg-background p-4 border space-y-2">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Endpoints</div>
-                <div className="text-2xl font-bold">5 / 5</div>
-                <div className="h-2 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-full" />
+                <div className="text-2xl font-bold">
+                  {usage.endpoints} / {limits.endpoints === Infinity ? "∞" : limits.endpoints}
+                </div>
+                {limits.endpoints !== Infinity && (
+                  <Progress value={usagePercent} className="h-2" />
+                )}
+              </div>
+              <div className="rounded-lg bg-background p-4 border space-y-2">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Status Pages</div>
+                <div className="text-2xl font-bold">
+                  {usage.statusPages} / {limits.statusPages === Infinity ? "∞" : limits.statusPages}
+                </div>
+                {limits.statusPages !== Infinity && (
+                   <Progress value={statusPagesPercent} className="h-2" />
+                )}
+              </div>
+              <div className="rounded-lg bg-background p-4 border grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Check Interval</div>
+                  <div className="text-2xl font-bold">{limits.checkInterval} min</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Retention</div>
+                  <div className="text-2xl font-bold">{limits.retention} days</div>
                 </div>
               </div>
-              <div className="rounded-lg bg-background p-4 border">
-                <div className="text-sm font-medium text-muted-foreground mb-1">Check Interval</div>
-                <div className="text-2xl font-bold">3 min</div>
-              </div>
-              <div className="rounded-lg bg-background p-4 border">
-                <div className="text-sm font-medium text-muted-foreground mb-1">Data Retention</div>
-                <div className="text-2xl font-bold">7 Days</div>
-              </div>
+            </div>
+
+            <div className="grid gap-2 pt-4">
+               <h3 className="font-semibold mb-2">Plan Features</h3>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                 <div className="flex items-center gap-2 text-sm">
+                   {plan.features.customDomain ? <Check className="size-4 text-green-500" /> : <X className="size-4 text-muted-foreground" />}
+                   <span>Custom Domain</span>
+                 </div>
+                 <div className="flex items-center gap-2 text-sm">
+                   {plan.features.emailAlerts ? <Check className="size-4 text-green-500" /> : <X className="size-4 text-muted-foreground" />}
+                   <span>Email Alerts</span>
+                 </div>
+                 <div className="flex items-center gap-2 text-sm">
+                   {plan.features.responseAlerts ? <Check className="size-4 text-green-500" /> : <X className="size-4 text-muted-foreground" />}
+                   <span>Response Alerts</span>
+                 </div>
+                 <div className="flex items-center gap-2 text-sm">
+                   {plan.features.sslMonitoring ? <Check className="size-4 text-green-500" /> : <X className="size-4 text-muted-foreground" />}
+                   <span>SSL Monitoring</span>
+                 </div>
+               </div>
             </div>
           </CardContent>
           <CardFooter className="border-t bg-background/50 px-6 py-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -56,13 +109,13 @@ export default function BillingPage() {
               Upgrade to higher limits and advanced features.
             </span>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">
-                View all plans
+              <Button variant="outline" className="w-full sm:w-auto" asChild>
+                <a href={`${process.env.NEXT_PUBLIC_WEBSITE_URL}/pricing`} target="_blank" rel="noopener noreferrer">View all plans</a>
               </Button>
-              <Button className="w-full sm:w-auto">
+              {/* <Button className="w-full sm:w-auto">
                 <Zap className="mr-2 h-4 w-4" />
                 Upgrade Plan
-              </Button>
+              </Button> */}
             </div>
           </CardFooter>
         </Card>
@@ -83,29 +136,14 @@ export default function BillingPage() {
                 </div>
                 <div>
                   <p className="font-medium">No payment method added</p>
-                  <p className="text-sm text-muted-foreground">Add a card to upgrade your plan</p>
+                  <p className="text-sm text-muted-foreground">Managed via Stripe</p>
                 </div>
               </div>
-              <Button variant="outline">Add Card</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Billing History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing History</CardTitle>
-            <CardDescription>
-              View your recent invoices and transaction history.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No invoices available.
+              <ManageSubscriptionButton />
             </div>
           </CardContent>
         </Card>
       </main>
     </div>
-  )
+  );
 }

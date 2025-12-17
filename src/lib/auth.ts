@@ -1,10 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 import { magicLink } from "better-auth/plugins";
+import { emailHarmony } from "better-auth-harmony";
 import { Resend } from "resend";
 import { nextCookies } from "better-auth/next-js";
 
@@ -12,10 +11,10 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "http://localhost:3000",
   trustedOrigins: [
     process.env.BETTER_AUTH_URL || "http://localhost:3000",
-    process.env.NEXT_PUBLIC_APP_URL || "",
+    process.env.NEXT_PUBLIC_CONSOLE_URL || "",
   ].filter(Boolean) as string[],
   emailAndPassword: {
     enabled: true,
@@ -32,6 +31,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    emailHarmony(),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
         const resend = new Resend(process.env.RESEND_API_KEY);

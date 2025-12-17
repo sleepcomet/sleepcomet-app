@@ -10,6 +10,7 @@ datasource db {
 model User {
   id            String    @id
   email         String    @unique
+  normalizedEmail String? @unique
   name          String?
   emailVerified Boolean   @default(false)
   image         String?
@@ -17,6 +18,9 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  endpoints     Endpoint[]
+  statusPages   StatusPage[]
+  subscription  Subscription?
 
   @@map("user")
 }
@@ -78,9 +82,14 @@ model Endpoint {
   lastCheck  DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
   statusPages StatusPage[] @relation("StatusPagesOnEndpoints")
 
   @@map("endpoints")
+  @@index([userId])
 }
 
 model StatusPage {
@@ -91,9 +100,32 @@ model StatusPage {
   status     String    @default("operational")
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   endpoints  Endpoint[] @relation("StatusPagesOnEndpoints")
 
   @@map("status_pages")
+  @@index([userId])
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plan      String   @default("FREE")
+  
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("subscription")
 }
 
 enum IncidentStatus {

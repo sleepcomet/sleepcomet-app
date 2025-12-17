@@ -28,7 +28,7 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const appHost = toHost(process.env.NEXT_PUBLIC_APP_URL, 'console.sleepcomet.com')
+  const appHost = toHost(process.env.NEXT_PUBLIC_CONSOLE_URL, 'console.sleepcomet.com')
   const statusHost = toHost(process.env.NEXT_PUBLIC_STATUS_URL, 'status.sleepcomet.com')
 
   if (hostname === statusHost) {

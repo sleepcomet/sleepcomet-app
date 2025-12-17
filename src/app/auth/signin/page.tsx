@@ -1,8 +1,35 @@
 import { LoginForm } from "@/components/login-form"
 import Link from "next/link"
 import Image from "next/image"
+import { auth } from "@/lib/auth"
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 
-export default function LoginPage() {
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function LoginPage(props: Props) {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  if (session) {
+    const searchParams = await props.searchParams;
+    const plan = searchParams.plan;
+    const interval = searchParams.interval;
+    
+    let redirectUrl = "/";
+    if (plan) {
+      redirectUrl += `?plan=${plan}`;
+      if (interval) {
+        redirectUrl += `&interval=${interval}`;
+      }
+    }
+    
+    redirect(redirectUrl);
+  }
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">

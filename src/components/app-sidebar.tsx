@@ -40,7 +40,7 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ userPlan = "free", ...props }: React.ComponentProps<typeof Sidebar> & { userPlan?: string }) {
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
 
@@ -57,7 +57,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser />
+        <NavUser userPlan={userPlan} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getUserSubscription } from "@/lib/subscription";
 
 export default async function DashboardLayout({
   children,
@@ -17,9 +18,12 @@ export default async function DashboardLayout({
     redirect("/auth/signin");
   }
 
+  const subscription = await getUserSubscription(session.user.id);
+  const planSlug = subscription?.plan?.slug || "free";
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar userPlan={planSlug} />
       <SidebarInset>
         {children}
       </SidebarInset>

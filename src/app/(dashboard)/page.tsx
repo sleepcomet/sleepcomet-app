@@ -29,6 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } from "lucide-react"
+import { CheckoutHandler } from "@/components/checkout-handler"
 
 type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string }
 
@@ -83,6 +84,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <CheckoutHandler />
       {/* Header */}
       <header className="flex h-14 items-center gap-4 border-b px-4">
         <SidebarTrigger />
