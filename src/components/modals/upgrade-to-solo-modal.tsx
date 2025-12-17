@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Check, Zap, Rocket, Shield, Clock } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import {
   Dialog,
@@ -26,13 +25,6 @@ export function UpgradeModal({
   onOpenChange,
   plan = PLANS.SOLO
 }: UpgradeModalProps) {
-  const router = useRouter()
-
-  const handleUpgrade = () => {
-    onOpenChange(false)
-    router.push(`/?plan=${plan.slug}&interval=monthly`)
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 border-0 shadow-2xl">
@@ -115,9 +107,11 @@ export function UpgradeModal({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Maybe Later
             </Button>
-            <Button onClick={handleUpgrade} className="shadow-lg shadow-primary/20">
-              <Zap className="mr-2 h-4 w-4" />
-              Upgrade to {plan.name.replace(" Plan", "")}
+            <Button asChild className="shadow-lg shadow-primary/20">
+              <a href={`${process.env.NEXT_PUBLIC_WEBSITE_URL}/pricing`} target="_blank" rel="noopener noreferrer">
+                <Zap className="mr-2 h-4 w-4" />
+                Upgrade to {plan.name.replace(" Plan", "")}
+              </a>
             </Button>
           </div>
         </DialogFooter>

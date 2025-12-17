@@ -7,6 +7,19 @@ import { emailHarmony } from "better-auth-harmony";
 import { Resend } from "resend";
 import { nextCookies } from "better-auth/next-js";
 
+const getCookieDomain = () => {
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || "";
+  try {
+    const hostname = new URL(websiteUrl).hostname;
+    if (hostname === "localhost") return undefined;
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      return "." + parts.slice(-2).join('.');
+    }
+  } catch { }
+  return undefined;
+};
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -15,9 +28,47 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.BETTER_AUTH_URL || "http://localhost:3000",
     process.env.NEXT_PUBLIC_CONSOLE_URL || "",
+    process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3001",
+    "http://localhost:3001", // Explicitly add local LP
   ].filter(Boolean) as string[],
+  callbacks: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    session: async ({ session, user }: any) => {
+      try {
+        const subscription = await prisma.subscription.findUnique({
+          where: { userId: user.id },
+          select: { plan: true }
+        });
+
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            plan: subscription?.plan || "FREE",
+          },
+        };
+      } catch {
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            plan: "FREE",
+          },
+        };
+      }
+    },
+  },
   emailAndPassword: {
     enabled: true,
+  },
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: getCookieDomain(),
+    },
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+    },
   },
   socialProviders: {
     github: {
