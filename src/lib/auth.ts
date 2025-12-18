@@ -8,7 +8,7 @@ import { Resend } from "resend";
 import { nextCookies } from "better-auth/next-js";
 
 const getCookieDomain = () => {
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || "";
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "";
   try {
     const hostname = new URL(websiteUrl).hostname;
     if (hostname === "localhost" || hostname.endsWith(".vercel.app")) return undefined;
@@ -67,7 +67,7 @@ export const auth = betterAuth({
   advanced: {
     crossSubDomainCookies: {
       enabled: true,
-      // domain: getCookieDomain(), // Commented out to test if default host assignment fixes cookie issues
+      domain: getCookieDomain(),
     },
     cookie: {
       secure: process.env.NODE_ENV === "production",
