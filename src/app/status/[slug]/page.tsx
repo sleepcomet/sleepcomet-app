@@ -12,24 +12,31 @@ type Page = { name: string; slug: string; status: "operational" | "degraded" | "
 export default function PublicStatusPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const [page, setPage] = useState<Page | null>(null)
+  const [loadingPage, setLoadingPage] = useState(true)
 
   const fetchData = async () => {
-    const res = await fetch(`/api/status-pages/by-slug/${slug}`, { cache: "no-store" })
-    if (!res.ok) return
-    const data = await res.json()
-    const mapped: Page = {
-      name: data.name,
-      slug: data.slug,
-      status: (data.status || "operational") as Page["status"],
-      daysRetention: data.daysRetention || 90,
-      endpoints: (data.endpoints || []).map((e: { id: string; name: string; status: "up" | "down"; uptime?: number }) => ({
-        id: e.id,
-        name: e.name,
-        status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
-        uptime: e.uptime,
-      })),
+    try {
+      const res = await fetch(`/api/status-pages/by-slug/${slug}`, { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      const mapped: Page = {
+        name: data.name,
+        slug: data.slug,
+        status: (data.status || "operational") as Page["status"],
+        daysRetention: data.daysRetention || 90,
+        endpoints: (data.endpoints || []).map((e: { id: string; name: string; status: "up" | "down"; uptime?: number }) => ({
+          id: e.id,
+          name: e.name,
+          status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
+          uptime: e.uptime,
+        })),
+      }
+      setPage(mapped)
+    } catch (error) {
+      console.error("Failed to load status page", error)
+    } finally {
+      setLoadingPage(false)
     }
-    setPage(mapped)
   }
 
   useEffect(() => {
@@ -150,6 +157,14 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
             </TooltipContent>
           </Tooltip>
         ))}
+      </div>
+    )
+  }
+
+  if (loadingPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950">
+        <Monitor className="size-10 text-emerald-500 animate-pulse" />
       </div>
     )
   }
