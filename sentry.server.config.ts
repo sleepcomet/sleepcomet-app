@@ -1,6 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
 
-if (process.env.NODE_ENV === "production") {
+const isProduction = process.env.NODE_ENV === "production";
+const debugSentry = process.env.NEXT_PUBLIC_DEBUG_SENTRY === "true";
+
+if (isProduction || debugSentry) {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
