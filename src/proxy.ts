@@ -25,7 +25,21 @@ function toHost(url: string | undefined, fallback: string) {
   }
 }
 
-export default async function proxy(request: NextRequest) {
+// Copied from auth.ts for Edge compatibility
+const getCookieDomain = () => {
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || "";
+  try {
+    const hostname = new URL(websiteUrl).hostname;
+    if (hostname === "localhost" || hostname.endsWith(".vercel.app")) return undefined;
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      return "." + parts.slice(-2).join('.');
+    }
+  } catch { }
+  return undefined;
+};
+
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hostname = request.headers.get('host') || ''
 
@@ -47,8 +61,15 @@ export default async function proxy(request: NextRequest) {
     }
 
     const { getSessionCookie } = await import('better-auth/cookies')
-    const session = getSessionCookie(request)
-    if (!session) {
+    const session = await getSessionCookie(request)
+
+    // Fallback: Check standard cookie names if helper returns null
+    // This ensures we don't incorrectly redirect authenticated users due to config mismatches in edge
+    const hasSessionCookie = session ||
+      request.cookies.has("better-auth.session_token") ||
+      request.cookies.has("__Secure-better-auth.session_token");
+
+    if (!hasSessionCookie) {
       return NextResponse.redirect(new URL('/auth/signin', request.url))
     }
     return NextResponse.next()

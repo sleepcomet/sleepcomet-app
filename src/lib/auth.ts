@@ -67,10 +67,11 @@ export const auth = betterAuth({
   advanced: {
     crossSubDomainCookies: {
       enabled: true,
-      domain: getCookieDomain(),
+      // domain: getCookieDomain(), // Commented out to test if default host assignment fixes cookie issues
     },
     cookie: {
       secure: process.env.NODE_ENV === "production",
+      // sameSite: "lax", // Ensure lax for oauth redirects
     },
   },
   socialProviders: {
