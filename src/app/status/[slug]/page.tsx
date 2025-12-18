@@ -5,6 +5,7 @@ import Link from "next/link"
 import { CheckCircle, AlertTriangle, Monitor } from "lucide-react"
 import { ThemeSelect } from "@/components/theme-select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useSSE } from "@/hooks/use-sse"
 
 type Endpoint = { id: string; name: string; status: "operational" | "degraded" | "outage" | "up" | "down"; uptime?: number }
 type Page = { name: string; slug: string; status: "operational" | "degraded" | "outage"; endpoints: Endpoint[]; daysRetention: number }
@@ -13,6 +14,34 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
   const { slug } = use(params)
   const [page, setPage] = useState<Page | null>(null)
   const [loadingPage, setLoadingPage] = useState(true)
+
+  useSSE((data) => {
+    if (!page) return
+
+    if (data.type === 'endpoint_update') {
+      setPage(prev => {
+        if (!prev) return null
+        const newEndpoints = prev.endpoints.map(ep => {
+          if (ep.id === data.endpointId) {
+            return {
+              ...ep,
+              status: (data.status === 'up' ? 'operational' : 'outage') as Endpoint["status"],
+              uptime: data.uptime
+            }
+          }
+          return ep
+        })
+        return { ...prev, endpoints: newEndpoints }
+      })
+    }
+
+    if (data.type === 'page_update' && data.slug === slug) {
+      setPage(prev => {
+        if (!prev) return null
+        return { ...prev, status: data.status }
+      })
+    }
+  })
 
   const fetchData = async () => {
     try {
@@ -44,7 +73,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
     fetchData()
     const interval = setInterval(() => {
       if (active) fetchData()
-    }, 30000)
+    }, 60000)
 
     return () => {
       active = false

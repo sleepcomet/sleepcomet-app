@@ -20,7 +20,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const { id } = await ctx.params
   const ep = await prisma.endpoint.findUnique({
     where: { id },
-    select: { id: true, name: true, url: true, status: true, uptime: true, lastCheck: true, createdAt: true, updatedAt: true },
+    select: { id: true, name: true, url: true, status: true, uptime: true, lastCheck: true, checkInterval: true, createdAt: true, updatedAt: true },
   })
   if (!ep) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const url = new URL(req.url)
@@ -95,12 +95,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       if (done) return
       done = true
       clearInterval(intervalId)
-      try { writer.close() } catch {}
+      try { writer.close() } catch { }
     }
     writer.closed.then(() => cleanup()).catch(() => cleanup())
     try {
       req.signal?.addEventListener("abort", () => cleanup())
-    } catch {}
+    } catch { }
     return new Response(ts.readable, {
       headers: {
         "Content-Type": "text/event-stream",

@@ -74,14 +74,15 @@ model Verification {
 }
 
 model Endpoint {
-  id        String    @id @default(uuid())
-  name      String
-  url       String
-  status    String    @default("up")
-  uptime    Float?
-  lastCheck DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  name          String
+  url           String
+  status        String    @default("up")
+  uptime        Float?
+  lastCheck     DateTime?
+  checkInterval Int       @default(300) // Check interval in seconds (default 5 min)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -158,4 +159,15 @@ model Incident {
 
   @@index([statusPageId])
   @@map("incidents")
+}
+
+model EndpointCheck {
+  id             Int      @id @default(autoincrement())
+  endpointId     String   @map("endpoint_id")
+  isUp           Boolean  @map("is_up")
+  responseTimeMs Float    @map("response_time_ms")
+  checkedAt      DateTime @default(now()) @map("checked_at")
+
+  @@index([endpointId, checkedAt(sort: Desc)])
+  @@map("endpoint_checks")
 }

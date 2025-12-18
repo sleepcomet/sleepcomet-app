@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts"
-import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap } from "lucide-react"
+import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap, Clock } from "lucide-react"
+import { useSSE } from "@/hooks/use-sse"
 
 type Metrics = {
   responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
@@ -17,13 +18,13 @@ type Metrics = {
   responseDistribution: { range: string; count: number }[]
   incidentsMonth: number
 }
-type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; metrics?: Metrics }
+type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; checkInterval?: number; metrics?: Metrics }
 
 const empty24h = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }))
 const empty30d = Array.from({ length: 30 }, (_, i) => ({ day: `Day ${i + 1}`, uptime: 0 }))
-const emptyStatus = [ { code: "2xx", count: 0 }, { code: "3xx", count: 0 }, { code: "4xx", count: 0 }, { code: "5xx", count: 0 } ]
+const emptyStatus = [{ code: "2xx", count: 0 }, { code: "3xx", count: 0 }, { code: "4xx", count: 0 }, { code: "5xx", count: 0 }]
 const emptyChecks = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, successful: 0, failed: 0 }))
-const emptyDist = [ { range: "0-50ms", count: 0 }, { range: "51-100ms", count: 0 }, { range: "101-200ms", count: 0 }, { range: "201-500ms", count: 0 }, { range: "500ms+", count: 0 } ]
+const emptyDist = [{ range: "0-50ms", count: 0 }, { range: "51-100ms", count: 0 }, { range: "101-200ms", count: 0 }, { range: "201-500ms", count: 0 }, { range: "500ms+", count: 0 }]
 
 const responseChartConfig = {
   responseTime: { label: "Avg Response", color: "hsl(var(--chart-1))" },
@@ -52,35 +53,62 @@ const distributionConfig = {
   count: { label: "Requests", color: "hsl(var(--chart-2))" },
 } satisfies ChartConfig
 
+const DEFAULT_CHECK_INTERVAL = 300 // 5 minutes fallback
+
 export default function EndpointDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [endpoint, setEndpoint] = useState<Endpoint | null>(null)
+  const [countdown, setCountdown] = useState(DEFAULT_CHECK_INTERVAL)
+
+  // Get interval from endpoint or use default
+  const checkInterval = endpoint?.checkInterval || DEFAULT_CHECK_INTERVAL
+
+  // Calculate remaining time until next check based on last_check
+  const calculateCountdown = (lastCheck: string | undefined, interval: number) => {
+    if (!lastCheck) return interval
+    const elapsed = Math.floor((Date.now() - new Date(lastCheck).getTime()) / 1000)
+    const remaining = interval - (elapsed % interval)
+    return remaining > 0 ? remaining : interval
+  }
+
+  // SSE for real-time updates
+  useSSE((data) => {
+    if (data.type === 'endpoint_update' && data.endpointId === id) {
+      setEndpoint(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          status: data.status,
+          uptime: data.uptime,
+          last_check: new Date().toISOString()
+        }
+      })
+      setCountdown(checkInterval) // Reset countdown on update
+    }
+  })
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown(prev => prev > 0 ? prev - 1 : checkInterval)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [checkInterval])
+
+  // Initial fetch
   useEffect(() => {
     let active = true
-    ;(async () => {
-      const res = await fetch(`/api/endpoints/${id}`, { cache: "no-store" })
-      if (!res.ok) return
-      const data = await res.json()
-      if (active) setEndpoint(data)
-    })()
+      ; (async () => {
+        const res = await fetch(`/api/endpoints/${id}`, { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        if (active) {
+          setEndpoint(data)
+          const interval = data.checkInterval || DEFAULT_CHECK_INTERVAL
+          setCountdown(calculateCountdown(data.lastCheck || data.last_check, interval))
+        }
+      })()
     return () => { active = false }
-  }, [id])
-
-  useEffect(() => {
-    if (!id) return
-    const es = new EventSource(`/api/endpoints/${id}?stream=1`)
-    es.onmessage = (ev) => {
-      try {
-        const payload = JSON.parse(ev.data)
-        setEndpoint((prev) => {
-          if (!prev) return prev
-          return { ...prev, metrics: payload.metrics, last_check: payload.last_check }
-        })
-      } catch {}
-    }
-    return () => {
-      es.close()
-    }
   }, [id])
 
   const name = endpoint?.name || "Endpoint"
@@ -90,11 +118,18 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
   const codes = (endpoint?.metrics?.statusCodesMonth || emptyStatus) as { code: string; count: number }[]
   const checks = (endpoint?.metrics?.hourlyChecksToday || emptyChecks) as { hour: string; successful: number; failed: number }[]
   const dist = (endpoint?.metrics?.responseDistribution || emptyDist) as { range: string; count: number }[]
-  const uptimeText = up.length ? `${up[up.length - 1].uptime}%` : endpoint?.uptime != null ? `${endpoint.uptime}%` : "—"
+  const uptimeText = endpoint?.uptime != null ? `${endpoint.uptime.toFixed(2)}%` : "—"
   const lastCheckText = endpoint?.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"
-  const avgResponse = Math.round(rt.reduce((acc, d) => acc + d.responseTime, 0) / rt.length)
+  const avgResponse = rt.length ? Math.round(rt.reduce((acc, d) => acc + d.responseTime, 0) / rt.length) : 0
   const checksToday = checks.reduce((acc, d) => acc + d.successful + d.failed, 0)
   const incidentsMonth = endpoint?.metrics?.incidentsMonth ?? 0
+
+  // Format countdown as mm:ss
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -111,6 +146,10 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           <Badge variant={status === "up" ? "default" : "destructive"}>
             {status === "up" ? "● Up" : "● Down"}
           </Badge>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+            <Clock className="size-3" />
+            <span className="font-mono tabular-nums">{formatTime(countdown)}</span>
+          </div>
         </div>
       </header>
 
@@ -124,8 +163,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <TrendingUp className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{uptimeText}</div>
-              <p className="text-xs text-muted-foreground">Last 30 days</p>
+              <div className="text-2xl font-bold tabular-nums">{uptimeText}</div>
+              <p className="text-xs text-muted-foreground">Last 90 days</p>
             </CardContent>
           </Card>
 
@@ -135,7 +174,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <Zap className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{avgResponse}ms</div>
+              <div className="text-2xl font-bold tabular-nums">{avgResponse}ms</div>
               <p className="text-xs text-muted-foreground">Last 24 hours</p>
             </CardContent>
           </Card>
@@ -146,8 +185,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{checksToday.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Every 30 seconds</p>
+              <div className="text-2xl font-bold tabular-nums">{checksToday.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Every {formatTime(checkInterval)}</p>
             </CardContent>
           </Card>
 
@@ -157,7 +196,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <TrendingDown className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{incidentsMonth}</div>
+              <div className="text-2xl font-bold tabular-nums">{incidentsMonth}</div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
           </Card>
@@ -178,11 +217,15 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Check</span>
-              <span>{lastCheckText}</span>
+              <span className="tabular-nums">{lastCheckText}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Next Check</span>
+              <span className="tabular-nums font-medium text-primary">{formatTime(countdown)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Check Interval</span>
-              <span>30 seconds</span>
+              <span>{formatTime(checkInterval)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Method</span>

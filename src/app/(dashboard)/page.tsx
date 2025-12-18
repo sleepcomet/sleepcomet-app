@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/popover"
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } from "lucide-react"
 import { CheckoutHandler } from "@/components/checkout-handler"
+import { useSSE } from "@/hooks/use-sse"
 
 type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string }
 
@@ -41,25 +42,42 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // SSE for real-time updates
+  useSSE((data) => {
+    if (data.type === 'endpoint_update') {
+      setEndpoints(prev => prev.map(ep => {
+        if (ep.id === data.endpointId) {
+          return {
+            ...ep,
+            status: data.status,
+            uptime: data.uptime,
+            last_check: new Date().toISOString()
+          }
+        }
+        return ep
+      }))
+    }
+  })
+
   useEffect(() => {
     let active = true
-    ;(async () => {
-      try {
-        setIsLoading(true)
-        setError("")
-        const res = await fetch("/api/endpoints", { cache: "no-store" })
-        if (!res.ok) {
+      ; (async () => {
+        try {
+          setIsLoading(true)
+          setError("")
+          const res = await fetch("/api/endpoints", { cache: "no-store" })
+          if (!res.ok) {
+            setError("Failed to load endpoints")
+            return
+          }
+          const data = await res.json()
+          if (active) setEndpoints(Array.isArray(data) ? data : [])
+        } catch {
           setError("Failed to load endpoints")
-          return
+        } finally {
+          if (active) setIsLoading(false)
         }
-        const data = await res.json()
-        if (active) setEndpoints(Array.isArray(data) ? data : [])
-      } catch {
-        setError("Failed to load endpoints")
-      } finally {
-        if (active) setIsLoading(false)
-      }
-    })()
+      })()
     return () => { active = false }
   }, [])
 
@@ -75,11 +93,11 @@ export default function Dashboard() {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    ;(async () => {
-      const res = await fetch(`/api/endpoints/${id}`, { method: "DELETE" })
-      if (!res.ok) return
-      setEndpoints((prev) => prev.filter((ep) => ep.id !== id))
-    })()
+      ; (async () => {
+        const res = await fetch(`/api/endpoints/${id}`, { method: "DELETE" })
+        if (!res.ok) return
+        setEndpoints((prev) => prev.filter((ep) => ep.id !== id))
+      })()
   }
 
   return (
