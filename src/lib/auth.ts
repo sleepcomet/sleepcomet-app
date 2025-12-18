@@ -20,17 +20,20 @@ const getCookieDomain = () => {
   return undefined;
 };
 
+const baseURL = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "http://localhost:3000";
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "http://localhost:3000",
+  baseURL: baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL,
   trustedOrigins: [
-    process.env.BETTER_AUTH_URL || "http://localhost:3000",
-    process.env.NEXT_PUBLIC_CONSOLE_URL || "",
-    process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3001",
-    "http://localhost:3001", // Explicitly add local LP
-  ].filter(Boolean) as string[],
+    process.env.BETTER_AUTH_URL,
+    process.env.NEXT_PUBLIC_CONSOLE_URL,
+    process.env.NEXT_PUBLIC_WEBSITE_URL,
+    "http://localhost:3000",
+    "http://localhost:3001"
+  ].filter(Boolean).map(url => url?.endsWith("/") ? url.slice(0, -1) : url) as string[],
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     session: async ({ session, user }: any) => {
