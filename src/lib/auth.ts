@@ -31,6 +31,8 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_CONSOLE_URL,
     process.env.NEXT_PUBLIC_WEBSITE_URL,
+    process.env.ALLOWED_ORIGIN_1,
+    process.env.ALLOWED_ORIGIN_2,
     "http://localhost:3000",
     "http://localhost:3001"
   ].filter(Boolean).map(url => url?.endsWith("/") ? url.slice(0, -1) : url) as string[],

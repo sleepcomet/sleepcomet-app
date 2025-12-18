@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 import { Input } from "@/components/ui/input"
 import {
@@ -43,17 +44,17 @@ export default function IncidentsPage() {
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     let active = true
-    ;(async () => {
-      try {
-        setIsLoading(true)
-        const res = await fetch("/api/incidents", { cache: "no-store" })
-        if (!res.ok) return
-        const data = await res.json()
-        if (active) setIncidents(data)
-      } finally {
-        if (active) setIsLoading(false)
-      }
-    })()
+      ; (async () => {
+        try {
+          setIsLoading(true)
+          const res = await fetch("/api/incidents", { cache: "no-store" })
+          if (!res.ok) return
+          const data = await res.json()
+          if (active) setIncidents(data)
+        } finally {
+          if (active) setIsLoading(false)
+        }
+      })()
     return () => { active = false }
   }, [])
 
@@ -152,7 +153,6 @@ export default function IncidentsPage() {
                   <div className="text-lg font-semibold">No incidents yet</div>
                   <div className="text-sm text-muted-foreground">Adicione endpoints para monitorar e gerar incidents automaticamente.</div>
                 </div>
-                
               </div>
             </CardContent>
           </Card>
@@ -183,47 +183,47 @@ export default function IncidentsPage() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => router.push(`/incidents/${incident.id}`)}
                     >
-                        <TableCell className="font-medium">
-                          <div className="flex flex-col">
-                            <span>{incident.title}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(incident.status)}>
-                            {getStatusLabel(incident.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`capitalize font-medium ${incident.impact === "critical" ? "text-destructive" :
-                            incident.impact === "major" ? "text-orange-500" :
-                              "text-muted-foreground"
-                            }`}>
-                            {incident.impact}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {incident.affectedComponents.map((comp, idx) => (
-                              <Badge key={idx} variant="secondary" className="font-normal text-xs">
-                                {comp}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {incident.startedAt}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {incident.updatedAt}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{incident.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(incident.status)}>
+                          {getStatusLabel(incident.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`capitalize font-medium ${incident.impact === "critical" ? "text-destructive" :
+                          incident.impact === "major" ? "text-orange-500" :
+                            "text-muted-foreground"
+                          }`}>
+                          {incident.impact}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {incident.affectedComponents.map((comp, idx) => (
+                            <Badge key={idx} variant="secondary" className="font-normal text-xs">
+                              {comp}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {incident.startedAt}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {incident.updatedAt}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         )}
-      </main >
-    </div >
+      </main>
+    </div>
   )
 }

@@ -50,12 +50,23 @@ export default async function middleware(request: NextRequest) {
   const appHost = toHost(process.env.NEXT_PUBLIC_CONSOLE_URL, 'console.sleepcomet.com')
   const statusHost = toHost(process.env.NEXT_PUBLIC_STATUS_URL, 'status.sleepcomet.com')
 
-  if (hostname === statusHost) {
+  // Check if this is the status subdomain (status.sleepcomet.com or status.localhost)
+  const isStatusSubdomain = hostname === statusHost || hostname.startsWith('status.localhost')
+
+  if (isStatusSubdomain) {
+    // Rewrite status.localhost:3000/slug -> /status/slug
     return NextResponse.rewrite(new URL(`/status${pathname}`, request.url))
   }
 
   const isLocal = hostname.startsWith('localhost') || hostname.startsWith('127.0.0.1')
+
+  // Handle main console app
   if (hostname === appHost || isLocal) {
+    // Allow public access to /status/* routes
+    if (pathname.startsWith('/status/')) {
+      return NextResponse.next()
+    }
+
     if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
       return NextResponse.next()
     }
@@ -77,8 +88,11 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Handle custom subdomain for status pages (e.g., mycompany.sleepcomet.com)
   if (hostname && !hostname.endsWith('vercel.app') && !isLocal) {
-    return NextResponse.rewrite(new URL(`/status/${hostname}${pathname}`, request.url))
+    // Extract the subdomain as the slug
+    const slug = hostname.split('.')[0]
+    return NextResponse.rewrite(new URL(`/status/${slug}${pathname}`, request.url))
   }
 
   return NextResponse.next()

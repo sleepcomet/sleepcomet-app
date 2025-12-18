@@ -54,7 +54,12 @@ export function NavMain({
           // If item has no children, render as a direct link
           !item.items || item.items.length === 0 ? (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title} className="cursor-pointer">
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title}
+                className="cursor-pointer"
+                isActive={pathname === item.url || (item.url !== "/" && pathname.startsWith(item.url + "/"))}
+              >
                 <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
@@ -81,7 +86,10 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={pathname === subItem.url || pathname.startsWith(subItem.url + "/")}
+                        >
                           <Link href={subItem.url}>
                             <span>{subItem.title}</span>
                           </Link>

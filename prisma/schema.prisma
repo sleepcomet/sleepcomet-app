@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  email         String    @unique
-  normalizedEmail String? @unique
-  name          String?
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  endpoints     Endpoint[]
-  statusPages   StatusPage[]
-  subscription  Subscription?
+  id              String        @id
+  email           String        @unique
+  normalizedEmail String?       @unique
+  name            String?
+  emailVerified   Boolean       @default(false)
+  image           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sessions        Session[]
+  accounts        Account[]
+  endpoints       Endpoint[]
+  statusPages     StatusPage[]
+  subscription    Subscription?
 
   @@map("user")
 }
@@ -74,57 +74,58 @@ model Verification {
 }
 
 model Endpoint {
-  id         String    @id @default(uuid())
-  name       String
-  url        String
-  status     String    @default("up")
-  uptime     Float?
-  lastCheck  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String    @id @default(uuid())
+  name      String
+  url       String
+  status    String    @default("up")
+  uptime    Float?
+  lastCheck DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   statusPages StatusPage[] @relation("StatusPagesOnEndpoints")
 
-  @@map("endpoints")
   @@index([userId])
+  @@map("endpoints")
 }
 
 model StatusPage {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   name       String
-  slug       String    @unique
-  visibility String    @default("public")
-  status     String    @default("operational")
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug       String   @unique
+  visibility String   @default("public")
+  status     String   @default("operational")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  endpoints  Endpoint[] @relation("StatusPagesOnEndpoints")
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("status_pages")
+  endpoints Endpoint[] @relation("StatusPagesOnEndpoints")
+  incidents Incident[]
+
   @@index([userId])
+  @@map("status_pages")
 }
 
 model Subscription {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  plan      String   @default("FREE")
-  
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan String @default("FREE")
+
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("subscription")
 }
 
@@ -143,14 +144,18 @@ enum IncidentImpact {
 }
 
 model Incident {
-  id                 String          @id @default(uuid())
+  id                 String         @id @default(uuid())
   title              String
   status             IncidentStatus
   impact             IncidentImpact
-  startedAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  affectedComponents String[]        @db.Text
+  startedAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  affectedComponents String[]       @db.Text
   timeline           Json?
 
+  statusPageId String
+  statusPage   StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([statusPageId])
   @@map("incidents")
 }
