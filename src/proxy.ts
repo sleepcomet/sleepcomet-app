@@ -65,9 +65,11 @@ export default async function middleware(request: NextRequest) {
 
     // Fallback: Check standard cookie names if helper returns null
     // This ensures we don't incorrectly redirect authenticated users due to config mismatches in edge
+
+    // We explicitly check for __Secure-better-auth.session_token first as it is the production default
     const hasSessionCookie = session ||
-      request.cookies.has("better-auth.session_token") ||
-      request.cookies.has("__Secure-better-auth.session_token");
+      request.cookies.get("__Secure-better-auth.session_token")?.value ||
+      request.cookies.get("better-auth.session_token")?.value;
 
     if (!hasSessionCookie) {
       return NextResponse.redirect(new URL('/auth/signin', request.url))
