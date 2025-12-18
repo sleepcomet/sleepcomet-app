@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect } from "react"
-import * as Sentry from "@sentry/nextjs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle, RefreshCw } from "lucide-react"
@@ -14,9 +13,6 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") {
-      Sentry.captureException(error)
-    }
     console.error(error)
   }, [error])
 
