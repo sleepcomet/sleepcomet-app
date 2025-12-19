@@ -124,12 +124,18 @@ export async function GET(req: Request) {
         },
       });
 
-      // SSE Notification
+      // SSE Notification - send complete endpoint data
       await notifySSE({
         type: 'endpoint_update',
         endpointId: endpoint.id,
+        name: endpoint.name,
+        url: endpoint.url,
         status: newStatus,
+        previousStatus: previousStatus,
         uptime: uptime,
+        responseTime: responseTime,
+        lastCheck: new Date().toISOString(),
+        isStatusChange: previousStatus !== newStatus,
       });
 
       // Handle DOWN transition

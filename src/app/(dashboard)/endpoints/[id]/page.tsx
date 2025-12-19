@@ -58,46 +58,58 @@ const DEFAULT_CHECK_INTERVAL = 300 // 5 minutes fallback
 export default function EndpointDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [endpoint, setEndpoint] = useState<Endpoint | null>(null)
-  const [countdown, setCountdown] = useState(DEFAULT_CHECK_INTERVAL)
+  const [countdown, setCountdown] = useState<number | null>(null) // null = loading
+  const [isLoading, setIsLoading] = useState(true)
 
   // Get interval from endpoint or use default
   const checkInterval = endpoint?.checkInterval || DEFAULT_CHECK_INTERVAL
 
   // Calculate remaining time until next check based on last_check
-  const calculateCountdown = (lastCheck: string | undefined, interval: number) => {
+  const calculateCountdown = (lastCheck: string | Date | null | undefined, interval: number) => {
     if (!lastCheck) return interval
-    const elapsed = Math.floor((Date.now() - new Date(lastCheck).getTime()) / 1000)
-    const remaining = interval - (elapsed % interval)
-    return remaining > 0 ? remaining : interval
+    const lastCheckTime = new Date(lastCheck).getTime()
+    if (isNaN(lastCheckTime)) return interval
+
+    const now = Date.now()
+    const elapsed = Math.floor((now - lastCheckTime) / 1000)
+    const remaining = interval - elapsed
+
+    // If remaining is negative or zero, next check should happen soon
+    if (remaining <= 0) return Math.max(1, interval - (Math.abs(remaining) % interval))
+    return remaining
   }
 
-  // SSE for real-time updates
+  // SSE for real-time updates - receives ALL changes
   useSSE((data) => {
     if (data.type === 'endpoint_update' && data.endpointId === id) {
       setEndpoint(prev => {
         if (!prev) return prev
         return {
           ...prev,
+          name: data.name || prev.name,
+          url: data.url || prev.url,
           status: data.status,
           uptime: data.uptime,
-          last_check: new Date().toISOString()
+          last_check: data.lastCheck || new Date().toISOString()
         }
       })
       setCountdown(checkInterval) // Reset countdown on update
     }
   })
 
-  // Countdown timer
+  // Countdown timer - only runs after loaded
   useEffect(() => {
+    if (countdown === null) return
     const timer = setInterval(() => {
-      setCountdown(prev => prev > 0 ? prev - 1 : checkInterval)
+      setCountdown(prev => prev !== null && prev > 0 ? prev - 1 : checkInterval)
     }, 1000)
     return () => clearInterval(timer)
-  }, [checkInterval])
+  }, [checkInterval, countdown !== null])
 
-  // Initial fetch
+  // Initial fetch - calculate countdown from server lastCheck
   useEffect(() => {
     let active = true
+    setIsLoading(true)
       ; (async () => {
         const res = await fetch(`/api/endpoints/${id}`, { cache: "no-store" })
         if (!res.ok) return
@@ -105,11 +117,23 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
         if (active) {
           setEndpoint(data)
           const interval = data.checkInterval || DEFAULT_CHECK_INTERVAL
-          setCountdown(calculateCountdown(data.lastCheck || data.last_check, interval))
+          const remaining = calculateCountdown(data.lastCheck, interval)
+          setCountdown(remaining)
+          setIsLoading(false)
         }
       })()
     return () => { active = false }
   }, [id])
+
+  // Show loading spinner while fetching
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        <p className="mt-4 text-muted-foreground">Loading endpoint...</p>
+      </div>
+    )
+  }
 
   const name = endpoint?.name || "Endpoint"
   const status: "up" | "down" = endpoint?.status || "up"
@@ -148,7 +172,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           </Badge>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
             <Clock className="size-3" />
-            <span className="font-mono tabular-nums">{formatTime(countdown)}</span>
+            <span className="font-mono tabular-nums">{countdown !== null ? formatTime(countdown) : "..."}</span>
           </div>
         </div>
       </header>

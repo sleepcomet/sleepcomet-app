@@ -32,7 +32,15 @@ import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } fro
 import { CheckoutHandler } from "@/components/checkout-handler"
 import { useSSE } from "@/hooks/use-sse"
 
-type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string }
+type Endpoint = {
+  id: string;
+  name: string;
+  url: string;
+  status: "up" | "down";
+  uptime?: number;
+  responseTime?: number;
+  last_check?: string
+}
 
 export default function Dashboard() {
   const router = useRouter()
@@ -42,7 +50,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // SSE for real-time updates
+  // SSE for real-time updates - receives ALL endpoint changes
   useSSE((data) => {
     if (data.type === 'endpoint_update') {
       setEndpoints(prev => prev.map(ep => {
@@ -51,7 +59,8 @@ export default function Dashboard() {
             ...ep,
             status: data.status,
             uptime: data.uptime,
-            last_check: new Date().toISOString()
+            responseTime: data.responseTime,
+            last_check: data.lastCheck || new Date().toISOString()
           }
         }
         return ep
@@ -223,8 +232,8 @@ export default function Dashboard() {
                           {endpoint.status === "up" ? "● Up" : "● Down"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{endpoint.uptime ? `${endpoint.uptime}%` : "—"}</TableCell>
-                      <TableCell>{"—"}</TableCell>
+                      <TableCell className="tabular-nums">{endpoint.uptime ? `${endpoint.uptime.toFixed(2)}%` : "—"}</TableCell>
+                      <TableCell className="tabular-nums">{endpoint.responseTime ? `${endpoint.responseTime}ms` : "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{endpoint.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <Popover>

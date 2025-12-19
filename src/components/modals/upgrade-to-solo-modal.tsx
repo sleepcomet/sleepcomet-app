@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { Check, Zap, Rocket, Shield, Clock } from "lucide-react"
 
 import {

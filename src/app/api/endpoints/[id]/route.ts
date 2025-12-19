@@ -1,119 +1,177 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const prisma = new PrismaClient()
-
-type Metrics = {
-  responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
-  uptime30d: { day: string; uptime: number }[]
-  statusCodesMonth: { code: string; count: number }[]
-  hourlyChecksToday: { hour: string; successful: number; failed: number }[]
-  responseDistribution: { range: string; count: number }[]
-  incidentsMonth: number
-}
-
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
+
   const ep = await prisma.endpoint.findUnique({
     where: { id },
-    select: { id: true, name: true, url: true, status: true, uptime: true, lastCheck: true, checkInterval: true, createdAt: true, updatedAt: true },
+    select: {
+      id: true,
+      name: true,
+      url: true,
+      status: true,
+      uptime: true,
+      lastCheck: true,
+      checkInterval: true,
+      createdAt: true,
+      updatedAt: true
+    },
   })
+
   if (!ep) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  const url = new URL(req.url)
-  const stream = url.searchParams.get("stream")
-  function buildMetrics(base: { status: "up" | "down"; uptime?: number }): Metrics {
-    const now = Date.now()
-    const responseTime24h = Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`,
-      responseTime: 60 + (((i + now) % 37)),
-      p95: 150 + (((i + now) % 53)),
-      p99: 200 + (((i + now) % 89)),
-    }))
-    const uptime30d = Array.from({ length: 30 }, (_, i) => ({
-      day: `Day ${i + 1}`,
-      uptime: typeof base.uptime === "number" ? base.uptime : 99,
-    }))
-    const statusCodesMonth = [
-      { code: "2xx", count: 25000 + (now % 100) },
-      { code: "3xx", count: 300 + (now % 20) },
-      { code: "4xx", count: 120 + (now % 10) },
-      { code: "5xx", count: base.status === "down" ? 200 + (now % 50) : 40 + (now % 5) },
-    ]
-    const hourlyChecksToday = Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`,
-      successful: base.status === "down" ? Math.floor(80 + (i % 10)) : Math.floor(110 + (i % 10)),
-      failed: base.status === "down" ? Math.floor((i % 5) + 5) : Math.floor((i % 5)),
-    }))
-    const responseDistribution = [
-      { range: "0-50ms", count: 1200 },
-      { range: "51-100ms", count: 2800 },
-      { range: "101-200ms", count: 1500 },
-      { range: "201-500ms", count: 300 },
-      { range: "500ms+", count: 80 },
-    ]
-    const incidentsMonth = base.status === "down" ? 1 : 0
-    return {
-      responseTime24h,
-      uptime30d,
-      statusCodesMonth,
-      hourlyChecksToday,
-      responseDistribution,
-      incidentsMonth,
-    }
-  }
-  if (stream) {
-    const encoder = new TextEncoder()
-    const ts = new TransformStream()
-    const writer = ts.writable.getWriter()
-    let done = false
-    const write = (s: string) => {
-      if (done) return
-      writer.write(encoder.encode(s)).catch(() => {
-        cleanup()
-      })
-    }
-    const push = () => {
-      if (done) return
-      try {
-        const metrics = buildMetrics({
-          status: ep.status as "up" | "down",
-          uptime: typeof ep.uptime === "number" ? ep.uptime : undefined,
-        })
-        const payload = JSON.stringify({ metrics, last_check: new Date().toISOString() })
-        write(`data: ${payload}\n\n`)
-      } catch {
-        cleanup()
-      }
-    }
-    push()
-    const intervalId = setInterval(push, 3000)
-    function cleanup() {
-      if (done) return
-      done = true
-      clearInterval(intervalId)
-      try { writer.close() } catch { }
-    }
-    writer.closed.then(() => cleanup()).catch(() => cleanup())
-    try {
-      req.signal?.addEventListener("abort", () => cleanup())
-    } catch { }
-    return new Response(ts.readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
-    })
-  }
-  const metrics = buildMetrics({
-    status: ep.status as "up" | "down",
-    uptime: typeof ep.uptime === "number" ? ep.uptime : undefined,
+
+  // Get real metrics from endpoint_checks table
+  const now = new Date()
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  // @ts-ignore - Prisma types might not be updated yet
+  const recentChecks = await prisma.endpointCheck.findMany({
+    where: {
+      endpointId: id,
+      checkedAt: { gte: twentyFourHoursAgo }
+    },
+    orderBy: { checkedAt: 'desc' },
+    select: { isUp: true, responseTimeMs: true, checkedAt: true }
   })
+
+  // @ts-ignore
+  const monthlyChecks = await prisma.endpointCheck.findMany({
+    where: {
+      endpointId: id,
+      checkedAt: { gte: thirtyDaysAgo }
+    },
+    orderBy: { checkedAt: 'desc' },
+    select: { isUp: true, responseTimeMs: true, checkedAt: true }
+  })
+
+  // Build Response Time 24h (hourly averages)
+  const hourlyData: Record<number, { total: number; count: number; times: number[] }> = {}
+  for (let i = 0; i < 24; i++) {
+    hourlyData[i] = { total: 0, count: 0, times: [] }
+  }
+
+  for (const check of recentChecks) {
+    const hour = new Date(check.checkedAt).getHours()
+    hourlyData[hour].total += check.responseTimeMs
+    hourlyData[hour].count++
+    hourlyData[hour].times.push(check.responseTimeMs)
+  }
+
+  const responseTime24h = Array.from({ length: 24 }, (_, i) => {
+    const data = hourlyData[i]
+    if (data.count === 0) return { hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }
+
+    const sorted = [...data.times].sort((a, b) => a - b)
+    const avg = Math.round(data.total / data.count)
+    const p95Index = Math.floor(sorted.length * 0.95)
+    const p99Index = Math.floor(sorted.length * 0.99)
+
+    return {
+      hour: `${i}:00`,
+      responseTime: avg,
+      p95: sorted[p95Index] || avg,
+      p99: sorted[p99Index] || avg,
+    }
+  })
+
+  // Build Uptime 30d (daily uptime percentages)
+  const dailyData: Record<string, { up: number; total: number }> = {}
+
+  for (const check of monthlyChecks) {
+    const date = new Date(check.checkedAt).toISOString().split('T')[0]
+    if (!dailyData[date]) dailyData[date] = { up: 0, total: 0 }
+    dailyData[date].total++
+    if (check.isUp) dailyData[date].up++
+  }
+
+  const uptime30d = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(now.getTime() - (29 - i) * 24 * 60 * 60 * 1000)
+    const dateStr = date.toISOString().split('T')[0]
+    const data = dailyData[dateStr]
+    const uptime = data && data.total > 0 ? Math.round((data.up / data.total) * 100) : 100
+    return { day: `Day ${i + 1}`, uptime }
+  })
+
+  // Build Status Codes (simulated based on checks - real implementation would need status code storage)
+  const successfulChecks = monthlyChecks.filter((c: any) => c.isUp).length
+  const failedChecks = monthlyChecks.length - successfulChecks
+
+  const statusCodesMonth = [
+    { code: "2xx", count: successfulChecks },
+    { code: "3xx", count: 0 },
+    { code: "4xx", count: 0 },
+    { code: "5xx", count: failedChecks },
+  ]
+
+  // Build Hourly Checks Today
+  const todayChecks = recentChecks.filter((c: any) => new Date(c.checkedAt) >= todayStart)
+  const hourlyChecksData: Record<number, { successful: number; failed: number }> = {}
+
+  for (let i = 0; i < 24; i++) {
+    hourlyChecksData[i] = { successful: 0, failed: 0 }
+  }
+
+  for (const check of todayChecks) {
+    const hour = new Date(check.checkedAt).getHours()
+    if (check.isUp) {
+      hourlyChecksData[hour].successful++
+    } else {
+      hourlyChecksData[hour].failed++
+    }
+  }
+
+  const hourlyChecksToday = Array.from({ length: 24 }, (_, i) => ({
+    hour: `${i}:00`,
+    successful: hourlyChecksData[i].successful,
+    failed: hourlyChecksData[i].failed,
+  }))
+
+  // Build Response Distribution
+  const distribution = { "0-50": 0, "51-100": 0, "101-200": 0, "201-500": 0, "500+": 0 }
+
+  for (const check of recentChecks) {
+    const time = check.responseTimeMs
+    if (time <= 50) distribution["0-50"]++
+    else if (time <= 100) distribution["51-100"]++
+    else if (time <= 200) distribution["101-200"]++
+    else if (time <= 500) distribution["201-500"]++
+    else distribution["500+"]++
+  }
+
+  const responseDistribution = [
+    { range: "0-50ms", count: distribution["0-50"] },
+    { range: "51-100ms", count: distribution["51-100"] },
+    { range: "101-200ms", count: distribution["101-200"] },
+    { range: "201-500ms", count: distribution["201-500"] },
+    { range: "500ms+", count: distribution["500+"] },
+  ]
+
+  // Count incidents this month
+  const incidentsMonth = await prisma.incident.count({
+    where: {
+      statusPage: {
+        endpoints: { some: { id } }
+      },
+      startedAt: { gte: thirtyDaysAgo }
+    }
+  })
+
+  const metrics = {
+    responseTime24h,
+    uptime30d,
+    statusCodesMonth,
+    hourlyChecksToday,
+    responseDistribution,
+    incidentsMonth,
+  }
+
   return NextResponse.json({ ...ep, metrics })
 }
 
