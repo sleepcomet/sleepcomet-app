@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// CORS headers helper
+function setCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_WEBSITE_URL || '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  return setCorsHeaders(response);
+}
+
 type Params = {
   params: Promise<{
     slug: string;
@@ -34,7 +48,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     });
 
     if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      const notFoundResponse = NextResponse.json({ error: "Post not found" }, { status: 404 });
+      return setCorsHeaders(notFoundResponse);
     }
 
     const formattedPost = {
@@ -60,12 +75,14 @@ export async function GET(request: NextRequest, { params }: Params) {
       published: post.published,
     };
 
-    return NextResponse.json(formattedPost);
+    const response = NextResponse.json(formattedPost);
+    return setCorsHeaders(response);
   } catch (error) {
     console.error("Error fetching blog post:", error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: "Failed to fetch blog post" },
       { status: 500 }
     );
+    return setCorsHeaders(errorResponse);
   }
 }

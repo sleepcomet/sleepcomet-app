@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// CORS headers helper
+function setCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_WEBSITE_URL || '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  return setCorsHeaders(response);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -59,17 +73,20 @@ export async function GET(request: NextRequest) {
       featured: post.featured,
     }));
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       posts: formattedPosts,
       total,
       page,
       limit,
     });
+
+    return setCorsHeaders(response);
   } catch (error) {
     console.error("Error fetching blog posts:", error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: "Failed to fetch blog posts" },
       { status: 500 }
     );
+    return setCorsHeaders(errorResponse);
   }
 }
