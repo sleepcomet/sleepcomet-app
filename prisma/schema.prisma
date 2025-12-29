@@ -21,6 +21,7 @@ model User {
   endpoints       Endpoint[]
   statusPages     StatusPage[]
   subscription    Subscription?
+  blogPosts       BlogPost[]
 
   @@map("user")
 }
@@ -180,4 +181,51 @@ model EndpointCheck {
 
   @@index([endpointId, checkedAt(sort: Desc)])
   @@map("endpoint_checks")
+}
+
+model BlogPost {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  title       String
+  excerpt     String    @db.Text
+  content     String    @db.Text
+  category    String
+  published   Boolean   @default(false)
+  featured    Boolean   @default(false)
+  readingTime Int?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  tags BlogPostTag[]
+
+  @@index([slug])
+  @@index([published])
+  @@index([category])
+  @@index([publishedAt(sort: Desc)])
+  @@map("blog_posts")
+}
+
+model BlogTag {
+  id   String @id @default(uuid())
+  name String @unique
+  slug String @unique
+
+  posts BlogPostTag[]
+
+  @@map("blog_tags")
+}
+
+model BlogPostTag {
+  postId String
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   BlogTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
 }
