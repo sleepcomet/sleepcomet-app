@@ -8,6 +8,27 @@ export const maxDuration = 60;
 const prisma = new PrismaClient();
 const REQUEST_TIMEOUT = 10000;
 
+type EndpointUpdatePayload = {
+  type: 'endpoint_update';
+  endpointId: string;
+  name: string;
+  url: string;
+  status: string;
+  previousStatus: string;
+  uptime: number;
+  responseTime: number;
+  lastCheck: string;
+  isStatusChange: boolean;
+};
+
+type PageUpdatePayload = {
+  type: 'page_update';
+  slug: string;
+  status: string;
+};
+
+type SSEPayload = EndpointUpdatePayload | PageUpdatePayload;
+
 async function checkEndpoint(url: string): Promise<{ isUp: boolean; responseTime: number }> {
   const startTime = Date.now();
 
@@ -25,14 +46,13 @@ async function checkEndpoint(url: string): Promise<{ isUp: boolean; responseTime
     const isUp = response.status >= 200 && response.status < 500;
 
     return { isUp, responseTime };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const responseTime = Date.now() - startTime;
     return { isUp: false, responseTime };
   }
 }
 
 async function recordCheck(endpointId: string, isUp: boolean, responseTime: number) {
-  // @ts-ignore - Prisma types might not be updated yet
   await prisma.endpointCheck.create({
     data: {
       endpointId,
@@ -46,7 +66,6 @@ async function calculateUptime(endpointId: string): Promise<number> {
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  // @ts-ignore - Prisma types might not be updated yet
   const checks = await prisma.endpointCheck.findMany({
     where: {
       endpointId,
@@ -57,13 +76,13 @@ async function calculateUptime(endpointId: string): Promise<number> {
 
   if (checks.length === 0) return 100.0;
 
-  const upChecks = checks.filter((check: any) => check.isUp).length;
+  const upChecks = checks.filter(check => check.isUp).length;
   const uptimePercentage = (upChecks / checks.length) * 100;
 
   return Math.round(uptimePercentage * 100) / 100;
 }
 
-async function notifySSE(payload: any) {
+async function notifySSE(payload: SSEPayload) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_CONSOLE_URL || 'http://localhost:3000';
     await fetch(`${baseUrl}/api/sse/notify`, {
