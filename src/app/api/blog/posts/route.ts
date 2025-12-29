@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 // CORS headers helper
 function setCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_WEBSITE_URL || '*');
+  const websiteUrl = (process.env.NEXT_PUBLIC_WEBSITE_URL || '*').replace(/['"]/g, '');
+  console.log('🔍 CORS Origin:', websiteUrl);
+  response.headers.set('Access-Control-Allow-Origin', websiteUrl);
   response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
   return response;
