@@ -6,6 +6,12 @@ export const PLANS = {
       monthly: 0,
       yearly: 0,
     },
+    // Mercado Pago plan IDs (preapproval plan templates - optional)
+    mpPlanIds: {
+      monthly: '',
+      yearly: '',
+    },
+    // Legacy Stripe IDs (keep for migration)
     priceIds: {
       monthly: '',
       yearly: '',
@@ -29,6 +35,10 @@ export const PLANS = {
     prices: {
       monthly: 4.99,
       yearly: 47.90,
+    },
+    mpPlanIds: {
+      monthly: process.env.MP_PLAN_ID_SOLO_MONTHLY || '',
+      yearly: process.env.MP_PLAN_ID_SOLO_YEARLY || '',
     },
     priceIds: {
       monthly: process.env.STRIPE_PRICE_ID_SOLO_MONTHLY || process.env.STRIPE_PRICE_ID_SOLO || '',
@@ -54,6 +64,10 @@ export const PLANS = {
       monthly: 9.99,
       yearly: 95.90,
     },
+    mpPlanIds: {
+      monthly: process.env.MP_PLAN_ID_PRO_MONTHLY || '',
+      yearly: process.env.MP_PLAN_ID_PRO_YEARLY || '',
+    },
     priceIds: {
       monthly: process.env.STRIPE_PRICE_ID_PRO_MONTHLY || process.env.STRIPE_PRICE_ID_PRO || '',
       yearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || '',
@@ -77,6 +91,10 @@ export const PLANS = {
     prices: {
       monthly: 29.99,
       yearly: 287.90,
+    },
+    mpPlanIds: {
+      monthly: process.env.MP_PLAN_ID_BUSINESS_MONTHLY || '',
+      yearly: process.env.MP_PLAN_ID_BUSINESS_YEARLY || '',
     },
     priceIds: {
       monthly: process.env.STRIPE_PRICE_ID_BUSINESS_MONTHLY || process.env.STRIPE_PRICE_ID_BUSINESS || '',
@@ -107,6 +125,16 @@ export function getPlanByPriceId(priceId: string): PlanType | null {
     }
   }
   return null;
+}
+
+export function getPlanBySlug(slug: string): typeof PLANS[PlanType] | null {
+  const plans = Object.values(PLANS);
+  return plans.find(p => p.slug === slug) || null;
+}
+
+export function getPlanKeyBySlug(slug: string): PlanType | null {
+  const entry = Object.entries(PLANS).find(([, plan]) => plan.slug === slug);
+  return entry ? entry[0] as PlanType : null;
 }
 
 export function getNextPlan(currentPlanSlug: string): typeof PLANS[PlanType] | null {

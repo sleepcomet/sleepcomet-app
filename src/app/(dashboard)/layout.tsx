@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserSubscription } from "@/lib/subscription";
 import { MonitoringProvider } from "@/components/monitoring-provider";
+import { QueryProvider } from "@/components/query-provider";
 
 export default async function DashboardLayout({
   children,
@@ -23,13 +24,15 @@ export default async function DashboardLayout({
   const planSlug = subscription?.plan?.slug || "free";
 
   return (
-    <SidebarProvider>
-      <MonitoringProvider />
-      <AppSidebar userPlan={planSlug} />
-      <SidebarInset>
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <QueryProvider>
+      <SidebarProvider>
+        <MonitoringProvider />
+        <AppSidebar userPlan={planSlug} />
+        <SidebarInset>
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </QueryProvider>
   );
 }
 

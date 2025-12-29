@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap, Clock } from "lucide-react"
-import { useSSE } from "@/hooks/use-sse"
+import { useEndpoint } from "@/hooks/use-endpoints"
 
 type Metrics = {
   responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
@@ -18,7 +18,6 @@ type Metrics = {
   responseDistribution: { range: string; count: number }[]
   incidentsMonth: number
 }
-type Endpoint = { id: string; name: string; url: string; status: "up" | "down"; uptime?: number; last_check?: string; checkInterval?: number; metrics?: Metrics }
 
 const empty24h = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }))
 const empty30d = Array.from({ length: 30 }, (_, i) => ({ day: `Day ${i + 1}`, uptime: 0 }))
@@ -57,14 +56,16 @@ const DEFAULT_CHECK_INTERVAL = 300 // 5 minutes fallback
 
 export default function EndpointDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const [endpoint, setEndpoint] = useState<Endpoint | null>(null)
-  const [countdown, setCountdown] = useState<number | null>(null) // null = loading
-  const [isLoading, setIsLoading] = useState(true)
+
+  // Use React Query + SSE hook for real-time data
+  const { data: endpoint, isLoading } = useEndpoint(id)
+
+  const [countdown, setCountdown] = useState<number | null>(null)
 
   // Get interval from endpoint or use default
   const checkInterval = endpoint?.checkInterval || DEFAULT_CHECK_INTERVAL
 
-  // Calculate remaining time until next check based on last_check
+  // Calculate remaining time until next check based on lastCheck
   const calculateCountdown = (lastCheck: string | Date | null | undefined, interval: number) => {
     if (!lastCheck) return interval
     const lastCheckTime = new Date(lastCheck).getTime()
@@ -74,30 +75,18 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
     const elapsed = Math.floor((now - lastCheckTime) / 1000)
     const remaining = interval - elapsed
 
-    // If remaining is negative or zero, next check should happen soon
     if (remaining <= 0) return Math.max(1, interval - (Math.abs(remaining) % interval))
     return remaining
   }
 
-  // SSE for real-time updates - receives ALL changes
-  useSSE((data) => {
-    if (data.type === 'endpoint_update' && data.endpointId === id) {
-      setEndpoint(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          name: data.name || prev.name,
-          url: data.url || prev.url,
-          status: data.status,
-          uptime: data.uptime,
-          last_check: data.lastCheck || new Date().toISOString()
-        }
-      })
-      setCountdown(checkInterval) // Reset countdown on update
+  // Initialize countdown when endpoint loads
+  useEffect(() => {
+    if (endpoint?.lastCheck) {
+      setCountdown(calculateCountdown(endpoint.lastCheck, checkInterval))
     }
-  })
+  }, [endpoint?.lastCheck, checkInterval])
 
-  // Countdown timer - only runs after loaded
+  // Countdown timer
   useEffect(() => {
     if (countdown === null) return
     const timer = setInterval(() => {
@@ -105,25 +94,6 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
     }, 1000)
     return () => clearInterval(timer)
   }, [checkInterval, countdown !== null])
-
-  // Initial fetch - calculate countdown from server lastCheck
-  useEffect(() => {
-    let active = true
-    setIsLoading(true)
-      ; (async () => {
-        const res = await fetch(`/api/endpoints/${id}`, { cache: "no-store" })
-        if (!res.ok) return
-        const data = await res.json()
-        if (active) {
-          setEndpoint(data)
-          const interval = data.checkInterval || DEFAULT_CHECK_INTERVAL
-          const remaining = calculateCountdown(data.lastCheck, interval)
-          setCountdown(remaining)
-          setIsLoading(false)
-        }
-      })()
-    return () => { active = false }
-  }, [id])
 
   // Show loading spinner while fetching
   if (isLoading) {
@@ -143,7 +113,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
   const checks = (endpoint?.metrics?.hourlyChecksToday || emptyChecks) as { hour: string; successful: number; failed: number }[]
   const dist = (endpoint?.metrics?.responseDistribution || emptyDist) as { range: string; count: number }[]
   const uptimeText = endpoint?.uptime != null ? `${endpoint.uptime.toFixed(2)}%` : "—"
-  const lastCheckText = endpoint?.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"
+  const lastCheckText = endpoint?.lastCheck ? new Date(endpoint.lastCheck).toLocaleString() : "—"
   const avgResponse = rt.length ? Math.round(rt.reduce((acc, d) => acc + d.responseTime, 0) / rt.length) : 0
   const checksToday = checks.reduce((acc, d) => acc + d.successful + d.failed, 0)
   const incidentsMonth = endpoint?.metrics?.incidentsMonth ?? 0

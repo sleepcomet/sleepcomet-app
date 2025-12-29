@@ -119,6 +119,16 @@ model Subscription {
 
   plan String @default("FREE")
 
+  // Mercado Pago fields
+  mpCustomerId       String?   @unique
+  mpPreapprovalId    String?   @unique
+  mpPaymentMethodId  String?
+  mpCardLastFour     String?
+  mpCardBrand        String?
+  mpCurrentPeriodEnd DateTime?
+  mpStatus           String? // authorized, paused, cancelled, pending
+
+  // Legacy Stripe fields (keep for migration, can remove later)
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
   stripePriceId          String?

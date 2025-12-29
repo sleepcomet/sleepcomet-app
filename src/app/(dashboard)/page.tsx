@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,65 +31,16 @@ import {
 } from "@/components/ui/popover"
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } from "lucide-react"
 import { CheckoutHandler } from "@/components/checkout-handler"
-import { useSSE } from "@/hooks/use-sse"
-
-type Endpoint = {
-  id: string;
-  name: string;
-  url: string;
-  status: "up" | "down";
-  uptime?: number;
-  responseTime?: number;
-  last_check?: string
-}
+import { useEndpoints } from "@/hooks/use-endpoints"
 
 export default function Dashboard() {
   const router = useRouter()
-  const [endpoints, setEndpoints] = useState<Endpoint[]>([])
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
 
-  // SSE for real-time updates - receives ALL endpoint changes
-  useSSE((data) => {
-    if (data.type === 'endpoint_update') {
-      setEndpoints(prev => prev.map(ep => {
-        if (ep.id === data.endpointId) {
-          return {
-            ...ep,
-            status: data.status,
-            uptime: data.uptime,
-            responseTime: data.responseTime,
-            last_check: data.lastCheck || new Date().toISOString()
-          }
-        }
-        return ep
-      }))
-    }
-  })
-
-  useEffect(() => {
-    let active = true
-      ; (async () => {
-        try {
-          setIsLoading(true)
-          setError("")
-          const res = await fetch("/api/endpoints", { cache: "no-store" })
-          if (!res.ok) {
-            setError("Failed to load endpoints")
-            return
-          }
-          const data = await res.json()
-          if (active) setEndpoints(Array.isArray(data) ? data : [])
-        } catch {
-          setError("Failed to load endpoints")
-        } finally {
-          if (active) setIsLoading(false)
-        }
-      })()
-    return () => { active = false }
-  }, [])
+  // Use React Query + SSE hook for real-time data
+  const { data: endpoints = [], isLoading, error } = useEndpoints()
 
   // Filter endpoints
   const filteredEndpoints = endpoints.filter((endpoint) => {
@@ -100,13 +52,13 @@ export default function Dashboard() {
     return matchesSearch && matchesStatus
   })
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-      ; (async () => {
-        const res = await fetch(`/api/endpoints/${id}`, { method: "DELETE" })
-        if (!res.ok) return
-        setEndpoints((prev) => prev.filter((ep) => ep.id !== id))
-      })()
+    const res = await fetch(`/api/endpoints/${id}`, { method: "DELETE" })
+    if (res.ok) {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
+    }
   }
 
   return (
@@ -193,7 +145,7 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle>All Endpoints</CardTitle>
               <CardDescription>
-                {error ? "" : `${filteredEndpoints.length} endpoint${filteredEndpoints.length !== 1 ? "s" : ""} found`}
+                {`${filteredEndpoints.length} endpoint${filteredEndpoints.length !== 1 ? "s" : ""} found`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -213,7 +165,7 @@ export default function Dashboard() {
                   {error && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-destructive py-8">
-                        {error}
+                        Failed to load endpoints
                       </TableCell>
                     </TableRow>
                   )}
@@ -233,8 +185,8 @@ export default function Dashboard() {
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">{endpoint.uptime ? `${endpoint.uptime.toFixed(2)}%` : "—"}</TableCell>
-                      <TableCell className="tabular-nums">{endpoint.responseTime ? `${endpoint.responseTime}ms` : "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{endpoint.last_check ? new Date(endpoint.last_check).toLocaleString() : "—"}</TableCell>
+                      <TableCell className="tabular-nums">—</TableCell>
+                      <TableCell className="text-muted-foreground">{endpoint.lastCheck ? new Date(endpoint.lastCheck).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <Popover>
                           <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>

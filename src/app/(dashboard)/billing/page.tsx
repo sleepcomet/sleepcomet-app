@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserPlanUsage } from "@/lib/subscription";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,23 @@ export default async function BillingPage() {
     redirect("/auth/signin");
   }
 
-  const { plan, usage, limits } = await getUserPlanUsage(session.user.id);
+  const [{ plan, usage, limits }, rawSubscription] = await Promise.all([
+    getUserPlanUsage(session.user.id),
+    prisma.subscription.findUnique({
+      where: { userId: session.user.id },
+    }),
+  ]);
+
+  // Type for subscription with MP fields (until Prisma is regenerated)
+  type SubscriptionWithMP = typeof rawSubscription & {
+    mpPreapprovalId?: string | null
+    mpCardLastFour?: string | null
+    mpCardBrand?: string | null
+    mpStatus?: string | null
+    mpCurrentPeriodEnd?: Date | null
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subscription = rawSubscription as any as SubscriptionWithMP | null;
 
   const usagePercent = (usage.endpoints / limits.endpoints) * 100;
   const statusPagesPercent = (usage.statusPages / limits.statusPages) * 100;
@@ -112,10 +129,6 @@ export default async function BillingPage() {
               <Button variant="outline" className="w-full sm:w-auto" asChild>
                 <a href={`${process.env.NEXT_PUBLIC_WEBSITE_URL}/pricing`} target="_blank" rel="noopener noreferrer">View all plans</a>
               </Button>
-              {/* <Button className="w-full sm:w-auto">
-                <Zap className="mr-2 h-4 w-4" />
-                Upgrade Plan
-              </Button> */}
             </div>
           </CardFooter>
         </Card>
@@ -135,8 +148,24 @@ export default async function BillingPage() {
                   <CreditCard className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium">No payment method added</p>
-                  <p className="text-sm text-muted-foreground">Managed via Stripe</p>
+                  {subscription?.mpCardLastFour ? (
+                    <>
+                      <p className="font-medium">
+                        Card •••• {subscription.mpCardLastFour}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {subscription.mpStatus === "authorized" ? "Active subscription" : 
+                         subscription.mpStatus === "paused" ? "Subscription paused" :
+                         subscription.mpStatus === "cancelled" ? "Subscription cancelled" :
+                         "Managed via Mercado Pago"}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">No payment method added</p>
+                      <p className="text-sm text-muted-foreground">Managed via Mercado Pago</p>
+                    </>
+                  )}
                 </div>
               </div>
               <ManageSubscriptionButton />
