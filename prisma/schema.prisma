@@ -117,27 +117,66 @@ model Subscription {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  plan String @default("FREE")
+  plan String @default("FREE") // FREE, SOLO, PRO, BUSINESS
 
-  // Mercado Pago fields
-  mpCustomerId       String?   @unique
-  mpPreapprovalId    String?   @unique
-  mpPaymentMethodId  String?
-  mpCardLastFour     String?
-  mpCardBrand        String?
-  mpCurrentPeriodEnd DateTime?
-  mpStatus           String? // authorized, paused, cancelled, pending
+  // Subscription Status
+  status            String    @default("active") // active, cancelled, past_due, trialing
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean   @default(false)
+  cancelledAt       DateTime?
 
-  // Legacy Stripe fields (keep for migration, can remove later)
-  stripeCustomerId       String?   @unique
-  stripeSubscriptionId   String?   @unique
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
+  // Billing Interval
+  interval String @default("monthly") // monthly, yearly
+
+  // Mercado Pago Payment Info
+  mpCustomerId      String? @unique
+  mpCardLastFour    String?
+  mpCardBrand       String?
+  mpPaymentMethodId String?
+
+  // Auto-renewal tracking
+  autoRenew         Boolean   @default(true)
+  nextBillingDate   DateTime?
+  lastPaymentDate   DateTime?
+  lastPaymentAmount Float?
+
+  // Payment history
+  payments Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("subscription")
+}
+
+model Payment {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  // Payment details
+  amount   Float
+  currency String @default("BRL")
+  status   String @default("pending") // pending, approved, rejected, cancelled, refunded
+  interval String // monthly, yearly
+
+  // Mercado Pago details
+  mpPaymentId    String? @unique
+  mpStatus       String?
+  mpStatusDetail String?
+
+  // Metadata
+  description   String?
+  failureReason String?
+  paidAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([mpPaymentId])
+  @@map("payments")
 }
 
 enum IncidentStatus {

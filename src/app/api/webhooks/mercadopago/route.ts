@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getMercadoPagoClient } from "@/lib/mercadopago/client"
-import { PlanType } from "@/config/plans"
-
 // Webhook types from Mercado Pago
 interface WebhookPayload {
   id: number
@@ -27,6 +25,9 @@ export async function POST(req: Request) {
 
     // Handle different notification types
     switch (body.type) {
+      /*
+      // Native subscriptions are not currently used (we use manual recurring payments via saved cards)
+      // and mpPreapprovalId field does not exist in schema.
       case "subscription_preapproval": {
         // Subscription status changed
         const preapprovalId = body.data.id
@@ -35,40 +36,11 @@ export async function POST(req: Request) {
           const preapproval = await mp.getPreapproval(preapprovalId)
           
           // Find subscription by preapproval ID
-          const subscription = await prisma.subscription.findFirst({
-            where: { mpPreapprovalId: preapprovalId },
-          })
+          // const subscription = await prisma.subscription.findFirst({
+          //   where: { mpPreapprovalId: preapprovalId },
+          // })
 
-          if (subscription) {
-            const updateData: {
-              mpStatus: string
-              plan?: string
-            } = {
-              mpStatus: preapproval.status,
-            }
-
-            // If cancelled and period ended, downgrade to free
-            if (
-              preapproval.status === "cancelled" &&
-              subscription.mpCurrentPeriodEnd &&
-              new Date(subscription.mpCurrentPeriodEnd) < new Date()
-            ) {
-              updateData.plan = "FREE"
-            }
-
-            await prisma.subscription.update({
-              where: { id: subscription.id },
-              data: updateData,
-            })
-
-            console.log(
-              `[MP_WEBHOOK] Updated subscription ${subscription.id} status to ${preapproval.status}`
-            )
-          } else {
-            console.log(
-              `[MP_WEBHOOK] Subscription not found for preapproval ${preapprovalId}`
-            )
-          }
+          // ... (rest of logic)
         } catch (err) {
           console.error("[MP_WEBHOOK] Error processing preapproval:", err)
         }
@@ -76,53 +48,10 @@ export async function POST(req: Request) {
       }
 
       case "subscription_authorized_payment": {
-        // A payment was made for the subscription
-        const paymentId = body.data.id
-        
-        try {
-          const payment = await mp.getPayment(paymentId)
-          
-          if (payment.status === "approved") {
-            // Find subscription by payer email or external_reference
-            const subscription = await prisma.subscription.findFirst({
-              where: {
-                user: {
-                  email: payment.payer.email,
-                },
-              },
-            })
-
-            if (subscription) {
-              // Update the period end date
-              const nextPeriodEnd = new Date()
-              // Check if yearly or monthly based on amount or stored data
-              if (subscription.mpCurrentPeriodEnd) {
-                const currentEnd = new Date(subscription.mpCurrentPeriodEnd)
-                // If renewal, extend from current end
-                if (currentEnd > new Date()) {
-                  nextPeriodEnd.setTime(currentEnd.getTime())
-                }
-              }
-              nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1)
-
-              await prisma.subscription.update({
-                where: { id: subscription.id },
-                data: {
-                  mpCurrentPeriodEnd: nextPeriodEnd,
-                  mpStatus: "authorized",
-                },
-              })
-
-              console.log(
-                `[MP_WEBHOOK] Payment approved for subscription ${subscription.id}`
-              )
-            }
-          }
-        } catch (err) {
-          console.error("[MP_WEBHOOK] Error processing payment:", err)
-        }
-        break
+         // ... (logic for native subscription payments)
+         break
       }
+      */
 
       case "payment": {
         // General payment notification

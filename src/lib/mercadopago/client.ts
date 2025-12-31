@@ -278,6 +278,58 @@ class MercadoPagoClient {
     }>(`/v1/payments/${id}`)
   }
 
+  /**
+   * Create a payment
+   */
+  async createPayment(data: {
+    transaction_amount: number
+    description: string
+    token: string
+    installments?: number
+    payer: {
+      email: string
+      identification?: {
+        type: string
+        number: string
+      }
+    }
+  }) {
+    // Generate idempotency key to prevent duplicate payments
+    const idempotencyKey = crypto.randomUUID()
+    
+    return this.request<{
+      id: number
+      status: string
+      status_detail: string
+      transaction_amount: number
+      currency_id: string
+      description: string
+      payment_method_id: string
+      payer: {
+        id: number
+        email: string
+      }
+      card?: {
+        first_six_digits: string
+        last_four_digits: string
+      }
+    }>("/v1/payments", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        transaction_amount: data.transaction_amount,
+        description: data.description,
+        token: data.token,
+        installments: data.installments || 1,
+        payer: data.payer,
+        capture: true,
+        statement_descriptor: "SLEEPCOMET",
+      }),
+    })
+  }
+
   // ==================== CUSTOMERS ====================
 
   /**

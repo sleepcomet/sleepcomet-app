@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+
 import { toast } from "sonner"
 
 interface UpdateCardModalProps {
@@ -18,12 +18,6 @@ interface UpdateCardModalProps {
   onOpenChange: (open: boolean) => void
   subscriptionId: string
   onSuccess?: () => void
-}
-
-declare global {
-  interface Window {
-    MercadoPago: any
-  }
 }
 
 export function UpdateCardModal({ 
@@ -37,7 +31,7 @@ export function UpdateCardModal({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const brickInitialized = useRef(false)
-  const brickController = useRef<any>(null)
+  const brickController = useRef<{ unmount: () => void } | null>(null)
 
   useEffect(() => {
     if (!open || brickInitialized.current) return
@@ -101,7 +95,7 @@ export function UpdateCardModal({
               setIsLoading(false)
               brickInitialized.current = true
             },
-            onSubmit: async (formData: any) => {
+            onSubmit: async (formData: unknown) => {
               try {
                 const response = await fetch(`/api/mercadopago/subscription/${subscriptionId}/update-card`, {
                   method: "POST",
@@ -125,13 +119,15 @@ export function UpdateCardModal({
                   onOpenChange(false)
                   setSuccess(false)
                 }, 2000)
-              } catch (error: any) {
-                toast.error(error.message || "Erro ao atualizar cartão")
+              } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : "Erro ao atualizar cartão"
+                toast.error(message)
               }
             },
-            onError: (error: any) => {
+            onError: (error: unknown) => {
               console.error("Brick error:", error)
-              setError(error.message || "An error occurred")
+              const message = error instanceof Error ? error.message : "An error occurred"
+              setError(message)
             },
           },
         }
@@ -141,9 +137,10 @@ export function UpdateCardModal({
           "updateCardBrick_container",
           settings
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to initialize brick:", error)
-        setError(error.message || "Failed to initialize form")
+        const message = error instanceof Error ? error.message : "Failed to initialize form"
+        setError(message)
         setIsLoading(false)
       }
     }

@@ -31,7 +31,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  // @ts-ignore - Prisma types might not be updated yet
+
   const recentChecks = await prisma.endpointCheck.findMany({
     where: {
       endpointId: id,
@@ -41,7 +41,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     select: { isUp: true, responseTimeMs: true, checkedAt: true }
   })
 
-  // @ts-ignore
+
   const monthlyChecks = await prisma.endpointCheck.findMany({
     where: {
       endpointId: id,
@@ -100,6 +100,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   })
 
   // Build Status Codes (simulated based on checks - real implementation would need status code storage)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const successfulChecks = monthlyChecks.filter((c: any) => c.isUp).length
   const failedChecks = monthlyChecks.length - successfulChecks
 
@@ -111,6 +112,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   ]
 
   // Build Hourly Checks Today
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const todayChecks = recentChecks.filter((c: any) => new Date(c.checkedAt) >= todayStart)
   const hourlyChecksData: Record<number, { successful: number; failed: number }> = {}
 

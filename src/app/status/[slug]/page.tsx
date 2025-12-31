@@ -7,6 +7,15 @@ import { ThemeSelect } from "@/components/theme-select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSSE } from "@/hooks/use-sse"
 
+
+type SSEData = {
+  type: string
+  endpointId?: string
+  status?: string
+  slug?: string
+  uptime?: number
+}
+
 type Endpoint = { id: string; name: string; status: "operational" | "degraded" | "outage" | "up" | "down"; uptime?: number }
 type Page = { name: string; slug: string; status: "operational" | "degraded" | "outage"; endpoints: Endpoint[]; daysRetention: number }
 
@@ -15,7 +24,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
   const [page, setPage] = useState<Page | null>(null)
   const [loadingPage, setLoadingPage] = useState(true)
 
-  useSSE((data) => {
+  useSSE<SSEData>((data) => {
     if (!page) return
 
     if (data.type === 'endpoint_update') {
@@ -38,38 +47,41 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
     if (data.type === 'page_update' && data.slug === slug) {
       setPage(prev => {
         if (!prev) return null
-        return { ...prev, status: data.status }
+        return { ...prev, status: (data.status || "operational") as Page["status"] }
       })
     }
   })
 
-  const fetchData = async () => {
-    try {
-      const res = await fetch(`/api/status-pages/by-slug/${slug}`, { cache: "no-store" })
-      if (!res.ok) return
-      const data = await res.json()
-      const mapped: Page = {
-        name: data.name,
-        slug: data.slug,
-        status: (data.status || "operational") as Page["status"],
-        daysRetention: data.daysRetention || 90,
-        endpoints: (data.endpoints || []).map((e: { id: string; name: string; status: "up" | "down"; uptime?: number }) => ({
-          id: e.id,
-          name: e.name,
-          status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
-          uptime: e.uptime,
-        })),
-      }
-      setPage(mapped)
-    } catch (error) {
-      console.error("Failed to load status page", error)
-    } finally {
-      setLoadingPage(false)
-    }
-  }
+
 
   useEffect(() => {
     let active = true
+
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/status-pages/by-slug/${slug}`, { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        const mapped: Page = {
+          name: data.name,
+          slug: data.slug,
+          status: (data.status || "operational") as Page["status"],
+          daysRetention: data.daysRetention || 90,
+          endpoints: (data.endpoints || []).map((e: { id: string; name: string; status: "up" | "down"; uptime?: number }) => ({
+            id: e.id,
+            name: e.name,
+            status: e.status === "up" ? "operational" : e.status === "down" ? "outage" : "operational",
+            uptime: e.uptime,
+          })),
+        }
+        if (active) setPage(mapped)
+      } catch (error) {
+        console.error("Failed to load status page", error)
+      } finally {
+        if (active) setLoadingPage(false)
+      }
+    }
+
     fetchData()
     const interval = setInterval(() => {
       if (active) fetchData()
@@ -98,7 +110,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
 
           const historyMap = new Map()
           if (data.history) {
-            data.history.forEach((h: any) => historyMap.set(h.date, h))
+            data.history.forEach((h: { date: string; uptime: number; checks: number }) => historyMap.set(h.date, h))
           }
 
           const fullHistory = []
@@ -158,7 +170,7 @@ export default function PublicStatusPage({ params }: { params: Promise<{ slug: s
 
     return (
       <div className={`flex ${gapClass} h-full flex-1 items-end w-full`}>
-        {history.map((day, i) => (
+        {history.map((day) => (
           <Tooltip key={day.date} delayDuration={0}>
             <TooltipTrigger asChild>
               <div

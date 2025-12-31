@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server"
-import { PrismaClient, IncidentStatus, IncidentImpact } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
-
-const prisma = new PrismaClient()
 
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });

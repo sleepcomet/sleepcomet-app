@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function useSSE(onMessage: (data: any) => void) {
+export function useSSE<T = unknown>(onMessage: (data: T) => void) {
   // Use ref to keep the latest callback without restarting effect
   const callbackRef = useRef(onMessage);
 
@@ -16,9 +16,10 @@ export function useSSE(onMessage: (data: any) => void) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data) as T;
         // Ignore internal keep-alive or connection messages if needed
-        if (data.type === 'connected') return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((data as any).type === 'connected') return;
 
         if (callbackRef.current) {
           callbackRef.current(data);

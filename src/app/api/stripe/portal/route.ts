@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
 
 export async function POST() {
   try {
@@ -14,22 +12,13 @@ export async function POST() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const dbSubscription = await prisma.subscription.findUnique({
-      where: {
-        userId: session.user.id,
-      },
-    });
-
-    if (!dbSubscription?.stripeCustomerId) {
-      return new NextResponse("No subscription found", { status: 400 });
-    }
-
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: dbSubscription.stripeCustomerId,
-      return_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing`,
-    });
-
-    return NextResponse.json({ url: portalSession.url });
+    // This Stripe billing portal route is deprecated
+    // The app uses Mercado Pago for payment processing
+    // Redirect to the billing page where users can manage their subscription
+    return NextResponse.json({ 
+      error: "Stripe billing portal is no longer supported. Please manage your subscription from the billing page.",
+      url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing` 
+    }, { status: 400 });
   } catch (error) {
     console.error("[STRIPE_PORTAL]", error);
     return new NextResponse("Internal Error", { status: 500 });

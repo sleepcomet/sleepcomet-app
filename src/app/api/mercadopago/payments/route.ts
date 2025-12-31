@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
-import { getMercadoPagoClient } from "@/lib/mercadopago/client"
 
 // Map MP payment status to our normalized status
 function mapPaymentStatus(status: string): "approved" | "pending" | "rejected" | "refunded" {
@@ -24,7 +23,7 @@ function mapPaymentStatus(status: string): "approved" | "pending" | "rejected" |
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -34,53 +33,39 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const url = new URL(req.url)
-    const subscriptionId = url.searchParams.get("subscriptionId")
-
     const subscription = await prisma.subscription.findUnique({
       where: { userId: session.user.id },
     })
 
-    if (!subscription || !subscription.mpPreapprovalId) {
+    if (!subscription) {
       return NextResponse.json({
         success: true,
         data: [],
       })
     }
 
-    // Use the subscription ID from query or from user's subscription
-    const targetSubId = subscriptionId || subscription.mpPreapprovalId
+    // Fetch payments from local database
+    const localPayments = await prisma.payment.findMany({
+      where: { subscriptionId: subscription.id },
+      orderBy: { paidAt: 'desc' },
+      take: 20
+    });
 
-    try {
-      const mp = getMercadoPagoClient()
-      
-      // Get payments associated with the preapproval
-      // MP doesn't have a direct endpoint for this, so we search by external_reference
-      const paymentsResponse = await mp.getPaymentsByPreapproval(targetSubId)
+    const payments = localPayments.map((payment) => ({
+      id: payment.mpPaymentId || payment.id,
+      date: payment.paidAt || new Date(),
+      amount: payment.amount,
+      status: mapPaymentStatus(payment.status || payment.mpStatus || 'pending'),
+      description: payment.description,
+      paymentMethod: 'credit_card', // defaulting as we store generic
+      cardLast4: '****', // We might not store card last 4 in Payment model yet, checking schema...
+      receiptUrl: undefined,
+    }))
 
-      const payments = paymentsResponse.results.map((payment) => ({
-        id: String(payment.id),
-        date: payment.date_created,
-        amount: payment.transaction_amount,
-        status: mapPaymentStatus(payment.status),
-        description: payment.description || `Pagamento ${subscription.plan}`,
-        paymentMethod: payment.payment_method_id,
-        cardLast4: payment.card?.last_four_digits,
-        receiptUrl: undefined, // MP doesn't provide receipt URLs directly
-      }))
-
-      return NextResponse.json({
-        success: true,
-        data: payments,
-      })
-    } catch (err) {
-      console.error("Error fetching payments from MP:", err)
-      // Return empty if can't fetch from MP
-      return NextResponse.json({
-        success: true,
-        data: [],
-      })
-    }
+    return NextResponse.json({
+      success: true,
+      data: payments,
+    })
   } catch (error) {
     console.error("[MP_GET_PAYMENTS]", error)
     return NextResponse.json(

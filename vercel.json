@@ -3,6 +3,10 @@
     {
       "path": "/api/monitoring/check",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/renew-subscriptions",
+      "schedule": "0 2 * * *"
     }
   ]
 }

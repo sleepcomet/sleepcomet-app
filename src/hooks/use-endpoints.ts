@@ -11,7 +11,14 @@ type Endpoint = {
   uptime?: number
   lastCheck?: string
   checkInterval?: number
-  metrics?: any
+  metrics?: {
+    responseTime24h: { time: string; value: number }[]
+    uptime30d: number
+    statusCodesMonth: { status: number; count: number }[]
+    hourlyChecksToday: { hour: string; count: number }[]
+    responseDistribution: { range: string; count: number }[]
+    incidentsMonth: number
+  }
 }
 
 async function fetchEndpoint(id: string): Promise<Endpoint> {

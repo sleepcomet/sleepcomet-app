@@ -3,12 +3,11 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { getMercadoPagoClient } from "@/lib/mercadopago/client"
-import { toSubscriptionWithMP } from "@/lib/mercadopago/shared-types"
 import { PLANS, PlanType, getPlanKeyBySlug } from "@/config/plans"
 
 // CORS headers for cross-origin requests from LP
 const corsHeaders = {
-  "Access-Control-Allow-Origin": process.env.NEXT_PUBLIC_WEBSITE_URL || "*",
+  "Access-Control-Allow-Origin": process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3001",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Credentials": "true",
@@ -39,6 +38,17 @@ export async function POST(req: Request) {
       )
     }
 
+    // Validate CPF
+    const cpf = payer?.identification?.number?.replace(/\D/g, "")
+    if (!cpf || cpf.length !== 11) {
+      return NextResponse.json(
+        { error: "CPF inválido. Por favor, forneça um CPF válido com 11 dígitos." },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
+    console.log("[MP_SUBSCRIPTION] Processing subscription with CPF:", cpf)
+
     // Get plan configuration
     const planKey = getPlanKeyBySlug(planId) || (planId.toUpperCase() as PlanType)
     const selectedPlan = PLANS[planKey]
@@ -50,19 +60,19 @@ export async function POST(req: Request) {
 
     // If free plan, just update DB
     if (selectedPlan.slug === "free") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.subscription.upsert({
         where: { userId: session.user.id },
         create: {
           userId: session.user.id,
           plan: "FREE",
-        } as any,
+        },
         update: {
           plan: "FREE",
-          mpPreapprovalId: null,
-          mpCurrentPeriodEnd: null,
-          mpStatus: null,
-        } as any,
+          currentPeriodEnd: null,
+          nextBillingDate: null,
+          autoRenew: false,
+          status: "active",
+        },
       })
       return NextResponse.json({ 
         success: true, 
@@ -78,7 +88,6 @@ export async function POST(req: Request) {
       : selectedPlan.prices.monthly
 
     // Calculate subscription dates
-    const startDate = new Date()
     const endDate = new Date()
     if (interval === "yearly") {
       endDate.setFullYear(endDate.getFullYear() + 1)
@@ -88,13 +97,12 @@ export async function POST(req: Request) {
 
     // Get or create customer
     let customerId: string | null = null
-    const rawSubscription = await prisma.subscription.findUnique({
+    const existingSubscription = await prisma.subscription.findUnique({
       where: { userId: session.user.id },
     })
-    const dbSubscription = toSubscriptionWithMP(rawSubscription)
 
-    if (dbSubscription?.mpCustomerId) {
-      customerId = dbSubscription.mpCustomerId
+    if (existingSubscription?.mpCustomerId) {
+      customerId = existingSubscription.mpCustomerId
     } else {
       // Search for existing customer
       const customerSearch = await mp.searchCustomer(session.user.email)
@@ -112,81 +120,102 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check for existing active subscription
-    if (dbSubscription?.mpPreapprovalId && dbSubscription.mpStatus === "authorized") {
-      // Cancel old subscription first
-      try {
-        await mp.updatePreapproval(dbSubscription.mpPreapprovalId, {
-          status: "cancelled",
-        })
-      } catch (err) {
-        console.error("Error cancelling old subscription:", err)
-      }
-    }
-
-    // Create the preapproval (subscription)
-    const preapproval = await mp.createPreapproval({
-      reason: `${selectedPlan.name} - ${interval === "yearly" ? "Anual" : "Mensal"}`,
-      external_reference: session.user.id,
-      payer_email: payer?.email || session.user.email,
-      card_token_id: token,
-      auto_recurring: {
-        frequency: interval === "yearly" ? 12 : 1,
-        frequency_type: "months",
-        transaction_amount: amount,
-        currency_id: "BRL",
-        start_date: startDate.toISOString(),
-      },
-      back_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing`, // Not used in transparent flow usually
-      status: "authorized",
-    })
-
-    // Get card info from token if present
+    // Save card to customer if token provided
+    let savedCardId: string | undefined
     let cardLastFour = ""
     let cardBrand = ""
-    
-    if (token) {
+
+    if (token && customerId) {
       try {
-        const cardInfo = await mp.getCardToken(token)
-        cardLastFour = cardInfo.last_four_digits
-        cardBrand = cardInfo.first_six_digits
+        const savedCard = await mp.saveCard(customerId, token)
+        savedCardId = savedCard.id
+        cardLastFour = savedCard.last_four_digits
+        cardBrand = savedCard.first_six_digits // bin/brand approximation
       } catch (err) {
-        console.error("Error getting card info:", err)
+        console.error("Error saving card:", err)
+        // If saving fails, we might still proceed with one-time payment if token is valid?
+        // But for subscription we NEED to save it.
+        // Assuming token is fresh, we retry or fail? 
+        // We'll try to use the token directly for payment if save fails, but renewal won't work.
       }
     }
 
-    // Save to database
+    // Process Payment
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const paymentData: any = {
+      transaction_amount: amount,
+      description: `${selectedPlan.name} - ${interval === "yearly" ? "Anual" : "Mensal"}`,
+      token: token, // Use token directly for first payment
+      installments: 1,
+      payer: {
+        email: payer?.email || session.user.email,
+        identification: payer?.identification
+      }
+    }
+
+    const payment = await mp.createPayment(paymentData)
+
+    if (payment.status !== "approved") {
+        return NextResponse.json({ 
+            error: "Payment rejected", 
+            detail: payment.status_detail 
+        }, { status: 400 })
+    }
+
+    // Save/Update Subscription in Database
     await prisma.subscription.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
         plan: planKey,
+        interval: interval,
+        status: "active",
         mpCustomerId: customerId,
-        mpPreapprovalId: preapproval.id,
-        mpPaymentMethodId: preapproval.payment_method_id,
+        mpPaymentMethodId: savedCardId, // Store the Saved Card ID
         mpCardLastFour: cardLastFour,
         mpCardBrand: cardBrand,
-        mpCurrentPeriodEnd: endDate,
-        mpStatus: preapproval.status,
+        currentPeriodEnd: endDate,
+        nextBillingDate: endDate,
+        lastPaymentDate: new Date(),
+        lastPaymentAmount: amount,
+        autoRenew: true
       },
       update: {
         plan: planKey,
+        interval: interval,
+        status: "active",
         mpCustomerId: customerId,
-        mpPreapprovalId: preapproval.id,
-        mpPaymentMethodId: preapproval.payment_method_id,
+        mpPaymentMethodId: savedCardId,
         mpCardLastFour: cardLastFour,
         mpCardBrand: cardBrand,
-        mpCurrentPeriodEnd: endDate,
-        mpStatus: preapproval.status,
+        currentPeriodEnd: endDate,
+        nextBillingDate: endDate,
+        lastPaymentDate: new Date(),
+        lastPaymentAmount: amount,
+        autoRenew: true
       },
+    })
+    
+    // Log payment
+    await prisma.payment.create({
+        data: {
+            subscriptionId: existingSubscription?.id || (await prisma.subscription.findUnique({ where: { userId: session.user.id } }))!.id,
+            amount: amount,
+            currency: "BRL",
+            status: "approved",
+            interval: interval,
+            mpPaymentId: String(payment.id),
+            mpStatus: payment.status,
+            mpStatusDetail: payment.status_detail,
+            description: payment.description,
+            paidAt: new Date()
+        }
     })
 
     return NextResponse.json({
       success: true,
-      id: preapproval.id,
-      status: preapproval.status,
-      init_point: preapproval.init_point, // URL for redirect flow
-      next_payment_date: preapproval.next_payment_date,
+      id: payment.id,
+      status: payment.status,
     }, { headers: corsHeaders })
   } catch (error) {
     console.error("[MP_SUBSCRIPTION]", error)

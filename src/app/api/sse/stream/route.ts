@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     start(controller) {
       const encoder = new TextEncoder();
 
-      const send = (data: any) => {
+      const send = (data: unknown) => {
         const message = `data: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(encoder.encode(message));
       };
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       send({ type: 'connected' });
 
       // Listener for new messages
-      const onMessage = (data: any) => {
+      const onMessage = (data: unknown) => {
         send(data);
       };
 

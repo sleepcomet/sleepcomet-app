@@ -21,10 +21,18 @@ interface MercadoPagoProviderProps {
   publicKey: string
 }
 
+type MercadoPagoInstance = {
+  bricks: () => {
+    create: (brick: string, containerId: string, settings: Record<string, unknown>) => Promise<{ unmount: () => void }>
+  }
+}
+
+type MercadoPagoConstructor = new (publicKey: string, options: { locale: string }) => MercadoPagoInstance
+
 declare global {
   interface Window {
-    MercadoPago: any
-    cardPaymentBrickController: any
+    MercadoPago: MercadoPagoConstructor
+    cardPaymentBrickController: unknown
   }
 }
 
@@ -35,7 +43,7 @@ export function MercadoPagoProvider({ children, publicKey }: MercadoPagoProvider
   useEffect(() => {
     // Check if script is already loaded
     if (window.MercadoPago) {
-      setIsLoaded(true)
+      requestAnimationFrame(() => setIsLoaded(true))
       return
     }
 
@@ -45,9 +53,6 @@ export function MercadoPagoProvider({ children, publicKey }: MercadoPagoProvider
 
     script.onload = () => {
       if (window.MercadoPago) {
-        window.MercadoPago = new window.MercadoPago(publicKey, {
-          locale: "pt-BR",
-        })
         setIsLoaded(true)
       }
     }

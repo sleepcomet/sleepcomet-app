@@ -42,22 +42,25 @@ export const auth = betterAuth({
       try {
         const subscription = await prisma.subscription.findUnique({
           where: { userId: user.id },
-          select: { plan: true }
+          select: { plan: true, interval: true }
         });
 
         return {
-          ...session,
+          session,
           user: {
-            ...session.user,
+            ...user,
             plan: subscription?.plan || "FREE",
+            interval: subscription?.interval || "monthly",
           },
         };
-      } catch {
+      } catch (error) {
+        console.error("Session callback error:", error);
         return {
-          ...session,
+          session,
           user: {
-            ...session.user,
+            ...user,
             plan: "FREE",
+            interval: "monthly",
           },
         };
       }
@@ -73,7 +76,7 @@ export const auth = betterAuth({
     },
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      // sameSite: "lax", // Ensure lax for oauth redirects
+      sameSite: process.env.NODE_ENV === "production" ? "lax" : "none",
     },
   },
   socialProviders: {

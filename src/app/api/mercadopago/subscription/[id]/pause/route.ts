@@ -2,13 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
-import { getMercadoPagoClient } from "@/lib/mercadopago/client"
 
-interface RouteContext {
-  params: Promise<{ id: string }>
-}
-
-export async function POST(req: Request, context: RouteContext) {
+export async function POST() {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -18,13 +13,10 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await context.params
-
     // Verify subscription belongs to user
     const subscription = await prisma.subscription.findFirst({
       where: {
         userId: session.user.id,
-        mpPreapprovalId: id,
       },
     })
 
@@ -32,18 +24,11 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
     }
 
-    const mp = getMercadoPagoClient()
-
-    // Pause the subscription
-    await mp.updatePreapproval(id, {
-      status: "paused",
-    })
-
-    // Update database
+    // Pause the subscription (disable auto-renew)
     await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        mpStatus: "paused",
+        autoRenew: false,
       },
     })
 

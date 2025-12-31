@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
-
-const prisma = new PrismaClient()
 
 export async function GET(_: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
@@ -42,6 +40,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ slug: string }> }
   if (plan === "PRO") daysRetention = 90
   if (plan === "BUSINESS") daysRetention = 365
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, ...pageWithoutUser } = page
   return NextResponse.json({ ...pageWithoutUser, daysRetention })
 }

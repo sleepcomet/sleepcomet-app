@@ -33,8 +33,8 @@ export const PLANS = {
     name: 'Solo Plan',
     slug: 'solo',
     prices: {
-      monthly: 4.99,
-      yearly: 47.90,
+      monthly: 19.90,
+      yearly: 190.80,
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_SOLO_MONTHLY || '',
@@ -61,8 +61,8 @@ export const PLANS = {
     name: 'Pro Plan',
     slug: 'pro',
     prices: {
-      monthly: 9.99,
-      yearly: 95.90,
+      monthly: 39.90,
+      yearly: 382.80,
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_PRO_MONTHLY || '',
@@ -89,8 +89,8 @@ export const PLANS = {
     name: 'Business Plan',
     slug: 'business',
     prices: {
-      monthly: 29.99,
-      yearly: 287.90,
+      monthly: 99.90,
+      yearly: 958.80,
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_BUSINESS_MONTHLY || '',

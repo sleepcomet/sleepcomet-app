@@ -10,15 +10,6 @@ import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, Cartesia
 import { ArrowLeft, Globe, Activity, TrendingUp, TrendingDown, Zap, Clock } from "lucide-react"
 import { useEndpoint } from "@/hooks/use-endpoints"
 
-type Metrics = {
-  responseTime24h: { hour: string; responseTime: number; p95: number; p99: number }[]
-  uptime30d: { day: string; uptime: number }[]
-  statusCodesMonth: { code: string; count: number }[]
-  hourlyChecksToday: { hour: string; successful: number; failed: number }[]
-  responseDistribution: { range: string; count: number }[]
-  incidentsMonth: number
-}
-
 const empty24h = Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, responseTime: 0, p95: 0, p99: 0 }))
 const empty30d = Array.from({ length: 30 }, (_, i) => ({ day: `Day ${i + 1}`, uptime: 0 }))
 const emptyStatus = [{ code: "2xx", count: 0 }, { code: "3xx", count: 0 }, { code: "4xx", count: 0 }, { code: "5xx", count: 0 }]
@@ -60,40 +51,40 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
   // Use React Query + SSE hook for real-time data
   const { data: endpoint, isLoading } = useEndpoint(id)
 
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [now, setNow] = useState<number | null>(null)
 
   // Get interval from endpoint or use default
   const checkInterval = endpoint?.checkInterval || DEFAULT_CHECK_INTERVAL
 
   // Calculate remaining time until next check based on lastCheck
-  const calculateCountdown = (lastCheck: string | Date | null | undefined, interval: number) => {
+  const calculateCountdown = (lastCheck: string | Date | null | undefined, interval: number, currentTimestamp: number) => {
     if (!lastCheck) return interval
     const lastCheckTime = new Date(lastCheck).getTime()
     if (isNaN(lastCheckTime)) return interval
 
-    const now = Date.now()
-    const elapsed = Math.floor((now - lastCheckTime) / 1000)
+    const elapsed = Math.floor((currentTimestamp - lastCheckTime) / 1000)
     const remaining = interval - elapsed
 
     if (remaining <= 0) return Math.max(1, interval - (Math.abs(remaining) % interval))
     return remaining
   }
 
-  // Initialize countdown when endpoint loads
+  // Update current time every second
   useEffect(() => {
-    if (endpoint?.lastCheck) {
-      setCountdown(calculateCountdown(endpoint.lastCheck, checkInterval))
-    }
-  }, [endpoint?.lastCheck, checkInterval])
-
-  // Countdown timer
-  useEffect(() => {
-    if (countdown === null) return
+    // Defer initial update to avoid synchronous render warning
+    const frameId = requestAnimationFrame(() => setNow(Date.now()))
     const timer = setInterval(() => {
-      setCountdown(prev => prev !== null && prev > 0 ? prev - 1 : checkInterval)
+      setNow(Date.now())
     }, 1000)
-    return () => clearInterval(timer)
-  }, [checkInterval, countdown !== null])
+    return () => {
+      cancelAnimationFrame(frameId)
+      clearInterval(timer)
+    }
+  }, [])
+
+  const countdown = (endpoint?.lastCheck && now) 
+    ? calculateCountdown(endpoint.lastCheck, checkInterval, now)
+    : null
 
   // Show loading spinner while fetching
   if (isLoading) {
@@ -215,7 +206,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Next Check</span>
-              <span className="tabular-nums font-medium text-primary">{formatTime(countdown)}</span>
+              <span className="tabular-nums font-medium text-primary">{countdown !== null ? formatTime(countdown) : "..."}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Check Interval</span>

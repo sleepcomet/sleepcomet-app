@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-const prisma = new PrismaClient();
 const REQUEST_TIMEOUT = 10000;
 
 type EndpointUpdatePayload = {
@@ -46,7 +44,7 @@ async function checkEndpoint(url: string): Promise<{ isUp: boolean; responseTime
     const isUp = response.status >= 200 && response.status < 500;
 
     return { isUp, responseTime };
-  } catch (error: unknown) {
+  } catch {
     const responseTime = Date.now() - startTime;
     return { isUp: false, responseTime };
   }
@@ -90,12 +88,12 @@ async function notifySSE(payload: SSEPayload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-  } catch (error) {
+  } catch {
     // Silent fail
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     // In production, this endpoint is protected by Vercel Cron's built-in security
     // In development, we allow open access for testing

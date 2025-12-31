@@ -22,12 +22,7 @@ interface PaymentData {
   transactionAmount: number
 }
 
-declare global {
-  interface Window {
-    MercadoPago: any
-    cardPaymentBrickController: any
-  }
-}
+
 
 export function CardPaymentBrick({
   amount,
@@ -74,7 +69,7 @@ export function CardPaymentBrick({
 
         // Destroy existing brick if any
         if (window.cardPaymentBrickController) {
-          window.cardPaymentBrickController.unmount()
+          (window.cardPaymentBrickController as { unmount: () => void }).unmount()
         }
 
         const settings = {
@@ -126,7 +121,7 @@ export function CardPaymentBrick({
               setIsLoading(false)
               brickInitialized.current = true
             },
-            onSubmit: async (formData: any) => {
+            onSubmit: async (formData: unknown) => {
               try {
                 const response = await fetch("/api/mercadopago/subscription", {
                   method: "POST",
@@ -134,7 +129,7 @@ export function CardPaymentBrick({
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    ...formData,
+                    ...(formData as Record<string, unknown>),
                     planId,
                     planName,
                     interval,
@@ -155,14 +150,16 @@ export function CardPaymentBrick({
                   paymentMethodId: data.payment_method_id,
                   transactionAmount: data.transaction_amount,
                 })
-              } catch (error: any) {
-                onError(error.message || "Payment processing failed")
+              } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : "Payment processing failed"
+                onError(message)
               }
             },
-            onError: (error: any) => {
+            onError: (error: unknown) => {
               console.error("Brick error:", error)
-              setBrickError(error.message || "An error occurred")
-              onError(error.message || "An error occurred")
+              const message = error instanceof Error ? error.message : "An error occurred"
+              setBrickError(message)
+              onError(message)
             },
           },
         }
@@ -172,9 +169,10 @@ export function CardPaymentBrick({
           "cardPaymentBrick_container",
           settings
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to initialize brick:", error)
-        setBrickError(error.message || "Failed to initialize payment form")
+        const message = error instanceof Error ? error.message : "Failed to initialize payment form"
+        setBrickError(message)
         setIsLoading(false)
       }
     }
@@ -183,7 +181,7 @@ export function CardPaymentBrick({
 
     return () => {
       if (window.cardPaymentBrickController) {
-        window.cardPaymentBrickController.unmount()
+        (window.cardPaymentBrickController as { unmount: () => void }).unmount()
         brickInitialized.current = false
       }
     }
@@ -210,7 +208,7 @@ export function CardPaymentBrick({
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-xl">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-            <div className="relative p-4 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full">
+            <div className="relative p-4 bg-linear-to-br from-primary/20 to-primary/5 rounded-full">
               <CreditCard className="h-8 w-8 text-primary animate-pulse" />
             </div>
           </div>

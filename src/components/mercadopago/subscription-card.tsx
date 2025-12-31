@@ -114,7 +114,7 @@ export function SubscriptionCard({ subscription, onUpdate, className }: Subscrip
           : "Subscription cancelled successfully"
       )
       onUpdate?.()
-    } catch (error) {
+    } catch {
       toast.error("Failed to process action. Please try again.")
     } finally {
       setIsLoading(null)
@@ -123,17 +123,17 @@ export function SubscriptionCard({ subscription, onUpdate, className }: Subscrip
 
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-2xl border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm",
+      "relative overflow-hidden rounded-2xl border bg-linear-to-br from-card to-card/50 backdrop-blur-sm",
       "p-6 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5",
       className
     )}>
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-br from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       
       {/* Header */}
       <div className="relative flex items-start justify-between">
         <div>
-          <h3 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h3 className="text-xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             {subscription.planName}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -258,7 +258,7 @@ export function SubscriptionCard({ subscription, onUpdate, className }: Subscrip
             size="sm"
             disabled={!!isLoading}
             onClick={() => handleAction("resume")}
-            className="flex-1 bg-gradient-to-r from-primary to-primary/90"
+            className="flex-1 bg-linear-to-r from-primary to-primary/90"
           >
             {isLoading === "resume" ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -272,7 +272,7 @@ export function SubscriptionCard({ subscription, onUpdate, className }: Subscrip
         {(subscription.status === "cancelled" || subscription.status === "expired") && (
           <Button
             size="sm"
-            className="flex-1 bg-gradient-to-r from-primary to-primary/90"
+            className="flex-1 bg-linear-to-r from-primary to-primary/90"
             asChild
           >
             <a href="/checkout">

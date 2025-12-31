@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { PLANS, PlanType } from "@/config/plans";
 
@@ -41,113 +40,44 @@ export async function POST(req: Request) {
             where: { userId: session.user.id },
             data: {
                 plan: "FREE",
-                stripePriceId: null,
-                stripeSubscriptionId: null,
-                stripeCurrentPeriodEnd: null
+                status: "active",
+                mpCustomerId: null,
+                mpCardLastFour: null,
+                mpCardBrand: null,
+                mpPaymentMethodId: null,
+                currentPeriodEnd: null,
+                nextBillingDate: null,
+                autoRenew: false
             }
          });
          return NextResponse.json({ url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing` });
     }
 
-
-    // Get or create subscription record to find stripeCustomerId if exists
+    // This route is deprecated - use Mercado Pago subscription route instead
     const dbSubscription = await prisma.subscription.findUnique({
       where: { userId: session.user.id },
     });
 
     // Check if user already has an ACTIVE subscription
-    if (dbSubscription?.stripeSubscriptionId && dbSubscription.plan !== "FREE") {
-      try {
-        const existingSub = await stripe.subscriptions.retrieve(dbSubscription.stripeSubscriptionId);
+    // Note: This Stripe route is deprecated - use Mercado Pago route instead
+    if (dbSubscription?.mpPaymentMethodId && dbSubscription.plan !== "FREE") {
+      // For Mercado Pago, we check subscription status differently
+      // This route should not be used - redirect to billing
         
-        if (existingSub.status === 'active' || existingSub.status === 'trialing') {
-          // If the user is trying to subscribe to the SAME plan they already have
-          if (dbSubscription.plan === selectedPlan.slug.toUpperCase()) {
-             // Redirect to billing portal instead of creating a duplicate sub
-             // We can create a billing portal session and redirect there
-             const portalSession = await stripe.billingPortal.sessions.create({
-                customer: dbSubscription.stripeCustomerId!,
-                return_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing`,
-             });
-             return NextResponse.json({ url: portalSession.url });
-          }
-          
-          // If they are trying to SWITCH plans (upgrade/downgrade), we should ideally use the billing portal or handle upgrade.
-          // For simplicity in this implementation, we redirect to billing portal to manage subscription.
-          // Or we could cancel the old one and create new, but that's messy.
-          // Safest bet: Redirect to billing portal for management.
-           const portalSession = await stripe.billingPortal.sessions.create({
-              customer: dbSubscription.stripeCustomerId!,
-              return_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing`,
-           });
-           return NextResponse.json({ url: portalSession.url });
+        if (dbSubscription.status === 'active') {
+          // User already has an active subscription - redirect to billing
+          return NextResponse.json({ url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing` });
         }
-      } catch (err) {
-        console.error("Error checking existing subscription:", err);
-        // If error (e.g. sub not found), proceed to create new one as fallback
-      }
     }
 
-    let customerId = dbSubscription?.stripeCustomerId;
+    // This Stripe route is deprecated - users should use the Mercado Pago route
+    // Redirect to billing page
+    return NextResponse.json({ 
+      error: "This payment method is no longer supported. Please use Mercado Pago.",
+      url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing` 
+    }, { status: 400 });
 
-    // If no customer ID in DB, check if user exists in Stripe by email or create new
-    if (!customerId) {
-      const existingCustomers = await stripe.customers.list({
-        email: session.user.email,
-        limit: 1,
-      });
-
-      if (existingCustomers.data.length > 0) {
-        customerId = existingCustomers.data[0].id;
-      } else {
-        const customer = await stripe.customers.create({
-          email: session.user.email,
-          name: session.user.name || undefined,
-          metadata: {
-            userId: session.user.id,
-          },
-        });
-        customerId = customer.id;
-      }
-      
-      // Save customer ID to DB
-      await prisma.subscription.upsert({
-        where: { userId: session.user.id },
-        create: {
-            userId: session.user.id,
-            stripeCustomerId: customerId,
-            plan: "FREE",
-        },
-        update: {
-            stripeCustomerId: customerId,
-        }
-      });
-    }
-
-    const stripeSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        userId: session.user.id,
-        plan: selectedPlan.slug.toUpperCase(),
-      },
-      subscription_data: {
-        metadata: {
-          plan: selectedPlan.slug.toUpperCase(),
-        },
-      },
-      success_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_CONSOLE_URL}/billing?canceled=true`,
-    });
-
-    return NextResponse.json({ url: stripeSession.url });
+    // This code should never be reached due to the return above
   } catch (error) {
     console.error("[STRIPE_CHECKOUT]", error);
     return new NextResponse("Internal Error", { status: 500 });
