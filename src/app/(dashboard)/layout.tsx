@@ -7,6 +7,8 @@ import { getUserSubscription } from "@/lib/subscription";
 import { MonitoringProvider } from "@/components/monitoring-provider";
 import { QueryProvider } from "@/components/query-provider";
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{
@@ -20,8 +22,16 @@ export default async function DashboardLayout({
     redirect("/auth/signin");
   }
 
-  const subscription = await getUserSubscription(session.user.id);
-  const planSlug = subscription?.plan?.slug || "free";
+  let planSlug = "free"
+  try {
+    const subscription = await getUserSubscription(session.user.id);
+    if (subscription?.plan?.slug) {
+      planSlug = subscription.plan.slug
+    }
+  } catch (error) {
+    console.error("Failed to fetch user subscription in layout:", error)
+    // Fallback to free plan on error
+  }
 
   return (
     <QueryProvider>
