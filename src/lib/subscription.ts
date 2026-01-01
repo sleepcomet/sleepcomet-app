@@ -36,6 +36,14 @@ export async function getUserSubscription(userId: string) {
   // Sync with Mercado Pago if we have a subscription ID
   if (subscription.mpPreapprovalId) {
     try {
+      // Skip MP sync in production if token is missing to avoid crashes
+      if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
+        console.warn("[SYNC] Skipping MP sync - access token not configured")
+        return {
+          ...subscription,
+          plan: PLANS[(subscription.plan || "FREE").toUpperCase() as PlanType] || PLANS.FREE,
+        }
+      }
       const mp = getMercadoPagoClient()
       const mpSub = await mp.getPreapproval(subscription.mpPreapprovalId)
 
