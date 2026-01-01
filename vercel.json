@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/monitoring/check",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/renew-subscriptions",
