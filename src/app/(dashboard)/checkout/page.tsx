@@ -131,7 +131,7 @@ export default function CheckoutPage() {
         <div className="max-w-md w-full text-center space-y-6">
           <div className="relative mx-auto w-24 h-24">
             <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
-            <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full">
+            <div className="relative flex items-center justify-center w-full h-full bg-linear-to-br from-emerald-500 to-emerald-600 rounded-full">
               <Check className="h-12 w-12 text-white" />
             </div>
           </div>
@@ -163,7 +163,7 @@ export default function CheckoutPage() {
           <div className="flex flex-col gap-3">
             <Button 
               onClick={() => router.push("/")}
-              className="bg-gradient-to-r from-primary to-primary/90"
+              className="bg-linear-to-r from-primary to-primary/90"
             >
               <Sparkles className="h-4 w-4 mr-2" />
               Start Monitoring
@@ -247,7 +247,7 @@ export default function CheckoutPage() {
                       "relative overflow-hidden rounded-2xl border-2 p-6 cursor-pointer transition-all duration-300",
                       "hover:shadow-xl hover:shadow-primary/5",
                       isSelected 
-                        ? "border-primary bg-gradient-to-br " + p.gradient
+                        ? "border-primary bg-linear-to-br " + p.gradient
                         : "border-border/50 hover:border-border"
                     )}
                   >
@@ -304,7 +304,7 @@ export default function CheckoutPage() {
               <Button
                 size="lg"
                 onClick={() => setStep("payment")}
-                className="min-w-[200px] bg-gradient-to-r from-primary to-primary/90"
+                className="min-w-[200px] bg-linear-to-r from-primary to-primary/90"
               >
                 Continue with {plan.name}
               </Button>
@@ -316,7 +316,7 @@ export default function CheckoutPage() {
             <div className="order-2 lg:order-1">
               <div className="sticky top-8 space-y-6">
                 <div className={cn(
-                  "rounded-2xl border p-6 bg-gradient-to-br",
+                  "rounded-2xl border p-6 bg-linear-to-br",
                   plan.gradient
                 )}>
                   <div className="flex items-start justify-between mb-4">
