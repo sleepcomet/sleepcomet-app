@@ -140,6 +140,10 @@ model Subscription {
   lastPaymentDate   DateTime?
   lastPaymentAmount Float?
 
+  // Pending changes (downgrades/crossgrades scheduled for end of period)
+  pendingPlan     String?
+  pendingInterval String?
+
   // Payment history
   payments Payment[]
 

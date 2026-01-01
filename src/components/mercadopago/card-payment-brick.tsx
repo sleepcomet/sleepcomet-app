@@ -143,6 +143,18 @@ export function CardPaymentBrick({
                   throw new Error(data.error || "Payment failed")
                 }
 
+                // Handle scheduled changes
+                if (data.action === "scheduled") {
+                  onSuccess({
+                    paymentId: "scheduled",
+                    status: "scheduled",
+                    statusDetail: data.message,
+                    paymentMethodId: "",
+                    transactionAmount: 0,
+                  })
+                  return
+                }
+
                 onSuccess({
                   paymentId: data.id,
                   status: data.status,

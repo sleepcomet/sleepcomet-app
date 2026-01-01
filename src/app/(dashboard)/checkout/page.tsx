@@ -20,17 +20,17 @@ import { cn } from "@/lib/utils"
 const plans = {
   solo: {
     name: "Solo",
-    description: "For individual developers scaling up.",
-    monthlyPrice: 4.99,
-    yearlyPrice: 3.99 * 12, // 47.88
+    description: "Para desenvolvedores individuais escalando.",
+    monthlyPrice: 19.90,
+    yearlyPrice: 15.90 * 12, // 190.80
     features: [
       { text: "60 Endpoints", included: true },
       { text: "2 Status Pages", included: true },
       { text: "5 Min Check Interval", included: true },
-      { text: "30 Days Data Retention", included: true },
-      { text: "SSL Monitoring", included: false },
-      { text: "Custom Domain", included: false },
-      { text: "Email Alerts", included: false },
+      { text: "30 Dias de Retenção", included: true },
+      { text: "Monitoramento SSL", included: false },
+      { text: "Domínio Personalizado", included: false },
+      { text: "Alertas por Email", included: false },
     ],
     popular: false,
     gradient: "from-blue-500/20 to-cyan-500/20",
@@ -38,17 +38,17 @@ const plans = {
   },
   pro: {
     name: "Pro",
-    description: "Everything you need for production apps.",
-    monthlyPrice: 9.99,
-    yearlyPrice: 7.99 * 12, // 95.88
+    description: "Tudo o que você precisa para apps em produção.",
+    monthlyPrice: 39.90,
+    yearlyPrice: 31.90 * 12, // 382.80
     features: [
       { text: "100 Endpoints", included: true },
       { text: "5 Status Pages", included: true },
       { text: "5 Min Check Interval", included: true },
-      { text: "90 Days Data Retention", included: true },
-      { text: "SSL Monitoring", included: true },
-      { text: "Custom Domain", included: true },
-      { text: "Email Alerts", included: false },
+      { text: "90 Dias de Retenção", included: true },
+      { text: "Monitoramento SSL", included: true },
+      { text: "Domínio Personalizado", included: true },
+      { text: "Alertas por Email", included: false },
     ],
     popular: true,
     gradient: "from-primary/20 to-purple-500/20",
@@ -56,18 +56,18 @@ const plans = {
   },
   business: {
     name: "Business",
-    description: "Unlimited power for growing teams.",
-    monthlyPrice: 29.99,
-    yearlyPrice: 23.99 * 12, // 287.88
+    description: "Poder ilimitado para times em crescimento.",
+    monthlyPrice: 99.90,
+    yearlyPrice: 79.90 * 12, // 958.80
     features: [
-      { text: "Unlimited Endpoints", included: true },
-      { text: "Unlimited Status Pages", included: true },
+      { text: "Endpoints Ilimitados", included: true },
+      { text: "Status Pages Ilimitadas", included: true },
       { text: "5 Min Check Interval", included: true },
-      { text: "365 Days Data Retention", included: true },
-      { text: "SSL Monitoring", included: true },
-      { text: "Custom Domain", included: true },
-      { text: "Email Alerts", included: true },
-      { text: "Response Alerts", included: true },
+      { text: "365 Dias de Retenção", included: true },
+      { text: "Monitoramento SSL", included: true },
+      { text: "Domínio Personalizado", included: true },
+      { text: "Alertas por Email", included: true },
+      { text: "Alertas de Resposta", included: true },
     ],
     popular: false,
     gradient: "from-amber-500/20 to-orange-500/20",
@@ -76,6 +76,14 @@ const plans = {
 }
 
 type PlanId = keyof typeof plans
+
+interface PaymentData {
+  paymentId: string
+  status: string
+  statusDetail: string
+  paymentMethodId: string
+  transactionAmount: number
+}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -107,55 +115,70 @@ export default function CheckoutPage() {
     ? 20 // Fixed 20% like LP says
     : 0
 
+  const [paymentStatus, setPaymentStatus] = useState<PaymentData | null>(null)
+
   // Calculate next billing date - use a static date to avoid impure function issues
   const getNextBillingDate = (int: "monthly" | "yearly") => {
     const days = int === "monthly" ? 30 : 365
     const futureDate = new Date()
     futureDate.setDate(futureDate.getDate() + days)
-    return futureDate.toLocaleDateString("en-US")
+    return futureDate.toLocaleDateString("pt-BR")
   }
   const [nextBillingDate] = useState(() => getNextBillingDate(interval))
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (data: PaymentData) => {
+    setPaymentStatus(data)
     setStep("success")
-    toast.success("Payment successful!")
+    if (data?.status === "scheduled") {
+      toast.success("Mudança agendada com sucesso!")
+    } else {
+      toast.success("Pagamento realizado com sucesso!")
+    }
   }
 
   const handlePaymentError = (error: string) => {
-    toast.error(error || "Payment failed. Please try again.")
+    toast.error(error || "Pagamento falhou. Por favor tente novamente.")
+  }
+
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
   }
 
   if (step === "success") {
+    const isScheduled = paymentStatus?.status === "scheduled"
+    
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="relative mx-auto w-24 h-24">
             <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
             <div className="relative flex items-center justify-center w-full h-full bg-linear-to-br from-emerald-500 to-emerald-600 rounded-full">
-              <Check className="h-12 w-12 text-white" />
+              {isScheduled ? <Check className="h-12 w-12 text-white" /> : <Sparkles className="h-12 w-12 text-white" />}
             </div>
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold">Payment Confirmed!</h1>
+            <h1 className="text-3xl font-bold">{isScheduled ? "Mudança Agendada!" : "Pagamento Confirmado!"}</h1>
             <p className="text-muted-foreground">
-              Welcome to the {plan.name} plan. Your subscription is now active.
+              {isScheduled 
+                ? `Sua mudança para o plano ${plan.name} ocorrerá ao final do ciclo atual.` 
+                : `Bem-vindo ao plano ${plan.name}. Sua assinatura está ativa.`}
             </p>
           </div>
           
           <div className="p-6 rounded-2xl bg-muted/30 border space-y-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Plan</span>
+              <span className="text-muted-foreground">Plano</span>
               <span className="font-medium">{plan.name}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Amount</span>
+              <span className="text-muted-foreground">Valor</span>
               <span className="font-medium">
-                ${interval === "monthly" ? plan.monthlyPrice.toFixed(2) : (plan.yearlyPrice / 12).toFixed(2)}/mo
+                {interval === "monthly" ? formatPrice(plan.monthlyPrice) : formatPrice(plan.yearlyPrice / 12)}/mês
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Next billing</span>
+              <span className="text-muted-foreground">{isScheduled ? "Data da mudança" : "Próxima cobrança"}</span>
               <span className="font-medium">{nextBillingDate}</span>
             </div>
           </div>
@@ -166,13 +189,13 @@ export default function CheckoutPage() {
               className="bg-linear-to-r from-primary to-primary/90"
             >
               <Sparkles className="h-4 w-4 mr-2" />
-              Start Monitoring
+              {isScheduled ? "Voltar ao Dashboard" : "Começar a Monitorar"}
             </Button>
             <Button 
               variant="outline"
               onClick={() => router.push("/billing")}
             >
-              View My Subscription
+              Ver Minha Assinatura
             </Button>
           </div>
         </div>
@@ -194,12 +217,12 @@ export default function CheckoutPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">
-              {step === "select" ? "Choose Your Plan" : "Complete Subscription"}
+              {step === "select" ? "Escolha seu Plano" : "Completar Assinatura"}
             </h1>
             <p className="text-muted-foreground">
               {step === "select" 
-                ? "Select the perfect plan for your needs"
-                : `Subscribe to the ${plan.name} plan`
+                ? "Selecione o plano ideal para suas necessidades"
+                : `Assine o plano ${plan.name}`
               }
             </p>
           </div>
@@ -216,7 +239,7 @@ export default function CheckoutPage() {
                   onClick={() => setInterval("monthly")}
                   className="rounded-full"
                 >
-                  Monthly
+                  Mensal
                 </Button>
                 <Button
                   variant={interval === "yearly" ? "default" : "ghost"}
@@ -224,8 +247,8 @@ export default function CheckoutPage() {
                   onClick={() => setInterval("yearly")}
                   className="rounded-full relative"
                 >
-                  Yearly
-                  <Badge className="absolute -top-2 -right-2 text-[10px] px-1.5 py-0.5 bg-emerald-500">
+                  Anual
+                  <Badge className="absolute -top-2 -right-2 text-[10px] px-1.5 py-0.5 bg-emerald-500 hover:bg-emerald-600 border-none">
                     20% OFF
                   </Badge>
                 </Button>
@@ -253,7 +276,7 @@ export default function CheckoutPage() {
                   >
                     {p.popular && (
                       <div className="absolute top-4 right-4">
-                        <Badge className="bg-primary">Popular</Badge>
+                        <Badge className="bg-primary hover:bg-primary">Popular</Badge>
                       </div>
                     )}
                     
@@ -265,16 +288,16 @@ export default function CheckoutPage() {
                       
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-bold">
-                          ${price.toFixed(2)}
+                          {formatPrice(price)}
                         </span>
                         <span className="text-muted-foreground">
-                          /mo
+                          /mês
                         </span>
                       </div>
                       
                       {interval === "yearly" && (
                         <p className="text-xs text-muted-foreground">
-                          Billed yearly (${p.yearlyPrice.toFixed(2)}/year)
+                          Faturado anualmente ({formatPrice(p.yearlyPrice)}/ano)
                         </p>
                       )}
                       
@@ -306,7 +329,7 @@ export default function CheckoutPage() {
                 onClick={() => setStep("payment")}
                 className="min-w-[200px] bg-linear-to-r from-primary to-primary/90"
               >
-                Continue with {plan.name}
+                Continuar com {plan.name}
               </Button>
             </div>
           </>
@@ -321,7 +344,7 @@ export default function CheckoutPage() {
                 )}>
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <Badge className="mb-2">{plan.name}</Badge>
+                      <Badge className="mb-2 hover:bg-primary">{plan.name}</Badge>
                       <h3 className="text-2xl font-bold">{plan.description}</h3>
                     </div>
                     {plan.popular && (
@@ -331,14 +354,14 @@ export default function CheckoutPage() {
                   
                   <div className="flex items-baseline gap-2 mb-6">
                     <span className="text-4xl font-bold">
-                      ${amount.toFixed(2)}
+                      {formatPrice(amount)}
                     </span>
                     <span className="text-muted-foreground">
-                      /{interval === "monthly" ? "mo" : "year"}
+                      /{interval === "monthly" ? "mês" : "ano"}
                     </span>
                     {savings > 0 && (
-                      <Badge className="bg-emerald-500 ml-2">
-                        Save {savings}%
+                      <Badge className="bg-emerald-500 hover:bg-emerald-600 ml-2 border-none text-white">
+                        Economize {savings}%
                       </Badge>
                     )}
                   </div>
@@ -357,15 +380,15 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/30 border text-center">
                     <Shield className="h-6 w-6 text-emerald-500" />
-                    <span className="text-xs text-muted-foreground">Secure Payment</span>
+                    <span className="text-xs text-muted-foreground">Pagamento Seguro</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/30 border text-center">
                     <Lock className="h-6 w-6 text-blue-500" />
-                    <span className="text-xs text-muted-foreground">SSL Encrypted</span>
+                    <span className="text-xs text-muted-foreground">Criptografia SSL</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/30 border text-center">
                     <Zap className="h-6 w-6 text-amber-500" />
-                    <span className="text-xs text-muted-foreground">Instant Access</span>
+                    <span className="text-xs text-muted-foreground">Acesso Imediato</span>
                   </div>
                 </div>
               </div>
@@ -376,7 +399,7 @@ export default function CheckoutPage() {
               <div className="rounded-2xl border bg-card p-6">
                 <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
                   <Lock className="h-5 w-5 text-muted-foreground" />
-                  Payment Details
+                  Detalhes do Pagamento
                 </h2>
                 
                 <CardPaymentBrick
@@ -389,10 +412,10 @@ export default function CheckoutPage() {
                 />
                 
                 <p className="text-xs text-muted-foreground text-center mt-4">
-                  By subscribing, you agree to our{" "}
-                  <a href="#" className="underline hover:text-foreground">Terms of Service</a>
-                  {" "}and{" "}
-                  <a href="#" className="underline hover:text-foreground">Privacy Policy</a>
+                  Ao assinar, você concorda com nossos{" "}
+                  <a href="#" className="underline hover:text-foreground">Termos de Serviço</a>
+                  {" "}e{" "}
+                  <a href="#" className="underline hover:text-foreground">Política de Privacidade</a>
                 </p>
               </div>
             </div>

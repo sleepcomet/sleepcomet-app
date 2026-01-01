@@ -27,20 +27,20 @@ const uptimeChartConfig = {
 } satisfies ChartConfig
 
 const statusCodesConfig = {
-  count: { label: "Requests", color: "hsl(var(--chart-1))" },
-  "2xx": { label: "2xx Success", color: "hsl(var(--chart-1))" },
+  count: { label: "Requisições", color: "hsl(var(--chart-1))" },
+  "2xx": { label: "2xx Sucesso", color: "hsl(var(--chart-1))" },
   "3xx": { label: "3xx Redirect", color: "hsl(var(--chart-2))" },
   "4xx": { label: "4xx Client Error", color: "hsl(var(--chart-3))" },
   "5xx": { label: "5xx Server Error", color: "hsl(var(--chart-5))" },
 } satisfies ChartConfig
 
 const checksChartConfig = {
-  successful: { label: "Successful", color: "hsl(var(--chart-1))" },
-  failed: { label: "Failed", color: "hsl(var(--chart-5))" },
+  successful: { label: "Sucesso", color: "hsl(var(--chart-1))" },
+  failed: { label: "Falha", color: "hsl(var(--chart-5))" },
 } satisfies ChartConfig
 
 const distributionConfig = {
-  count: { label: "Requests", color: "hsl(var(--chart-2))" },
+  count: { label: "Requisições", color: "hsl(var(--chart-2))" },
 } satisfies ChartConfig
 
 const DEFAULT_CHECK_INTERVAL = 300 // 5 minutes fallback
@@ -91,7 +91,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex flex-col min-h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-        <p className="mt-4 text-muted-foreground">Loading endpoint...</p>
+        <p className="mt-4 text-muted-foreground">Carregando endpoint...</p>
       </div>
     )
   }
@@ -123,13 +123,13 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
         <SidebarTrigger />
         <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
-          Back
+          Voltar
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">{name}</h1>
           <Badge variant={status === "up" ? "default" : "destructive"}>
-            {status === "up" ? "● Up" : "● Down"}
+            {status === "up" ? "● Online" : "● Offline"}
           </Badge>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
             <Clock className="size-3" />
@@ -149,40 +149,40 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold tabular-nums">{uptimeText}</div>
-              <p className="text-xs text-muted-foreground">Last 90 days</p>
+              <p className="text-xs text-muted-foreground">Últimos 90 dias</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+              <CardTitle className="text-sm font-medium">Resp. Média</CardTitle>
               <Zap className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold tabular-nums">{avgResponse}ms</div>
-              <p className="text-xs text-muted-foreground">Last 24 hours</p>
+              <p className="text-xs text-muted-foreground">Últimas 24 horas</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Checks Today</CardTitle>
+              <CardTitle className="text-sm font-medium">Checagens Hoje</CardTitle>
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold tabular-nums">{checksToday.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Every {formatTime(checkInterval)}</p>
+              <p className="text-xs text-muted-foreground">A cada {formatTime(checkInterval)}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Incidents</CardTitle>
+              <CardTitle className="text-sm font-medium">Incidentes</CardTitle>
               <TrendingDown className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold tabular-nums">{incidentsMonth}</div>
-              <p className="text-xs text-muted-foreground">This month</p>
+              <p className="text-xs text-muted-foreground">Este mês</p>
             </CardContent>
           </Card>
         </div>
@@ -192,7 +192,7 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Globe className="size-4" />
-              Endpoint Details
+              Detalhes do Endpoint
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
@@ -201,19 +201,19 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
               <span className="font-mono">{endpoint?.url || "—"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Last Check</span>
+              <span className="text-muted-foreground">Última Checagem</span>
               <span className="tabular-nums">{lastCheckText}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Next Check</span>
+              <span className="text-muted-foreground">Próxima Checagem</span>
               <span className="tabular-nums font-medium text-primary">{countdown !== null ? formatTime(countdown) : "..."}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Check Interval</span>
+              <span className="text-muted-foreground">Intervalo</span>
               <span>{formatTime(checkInterval)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Method</span>
+              <span className="text-muted-foreground">Método</span>
               <span>GET</span>
             </div>
           </CardContent>
@@ -224,8 +224,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           {/* Response Time Line Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Response Time (24h)</CardTitle>
-              <CardDescription>Average, P95, and P99 response times</CardDescription>
+              <CardTitle className="text-sm font-medium">Tempo de Resposta (24h)</CardTitle>
+              <CardDescription>Média, P95 e P99</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={responseChartConfig} className="h-[250px] w-full">
@@ -246,8 +246,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           {/* Uptime Area Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Uptime (30 days)</CardTitle>
-              <CardDescription>Daily uptime percentage</CardDescription>
+              <CardTitle className="text-sm font-medium">Uptime (30 dias)</CardTitle>
+              <CardDescription>Porcentagem diária de uptime</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={uptimeChartConfig} className="h-[250px] w-full">
@@ -268,8 +268,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           {/* Status Codes Bar Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Status Codes</CardTitle>
-              <CardDescription>Distribution this month</CardDescription>
+              <CardTitle className="text-sm font-medium">Códigos de Status</CardTitle>
+              <CardDescription>Distribuição deste mês</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={statusCodesConfig} className="h-[200px] w-full">
@@ -287,8 +287,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           {/* Hourly Checks Stacked Bar */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Hourly Checks</CardTitle>
-              <CardDescription>Success vs failed today</CardDescription>
+              <CardTitle className="text-sm font-medium">Checagens por Hora</CardTitle>
+              <CardDescription>Sucesso vs falha hoje</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={checksChartConfig} className="h-[200px] w-full">
@@ -307,8 +307,8 @@ export default function EndpointDetails({ params }: { params: Promise<{ id: stri
           {/* Response Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Response Distribution</CardTitle>
-              <CardDescription>Response time ranges</CardDescription>
+              <CardTitle className="text-sm font-medium">Distribuição de Resposta</CardTitle>
+              <CardDescription>Faixas de tempo de resposta</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={distributionConfig} className="h-[200px] w-full">

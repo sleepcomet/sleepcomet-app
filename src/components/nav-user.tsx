@@ -141,7 +141,7 @@ export function NavUser({
                     className="bg-primary/10 text-primary focus:bg-primary/20 focus:text-primary cursor-pointer"
                   >
                     <Sparkles className="size-4 text-primary" />
-                    <span className="font-medium">Upgrade to {nextPlan.name.replace(" Plan", "")}</span>
+                    <span className="font-medium">Mudar para {nextPlan.name.replace(" Plan", "")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               )}
@@ -150,13 +150,13 @@ export function NavUser({
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings />
-                    Settings
+                    Configurações
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/billing">
                     <CreditCard />
-                    Billing
+                    Faturamento
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -178,7 +178,7 @@ export function NavUser({
                 }}
               >
                 <LogOut />
-                Log out
+                Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

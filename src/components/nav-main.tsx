@@ -28,6 +28,7 @@ export function NavMain({
     url: string
     icon?: LucideIcon
     isActive?: boolean
+    badge?: number
     items?: {
       title: string
       url: string
@@ -48,7 +49,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) =>
           // If item has no children, render as a direct link
@@ -63,6 +64,11 @@ export function NavMain({
                 <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

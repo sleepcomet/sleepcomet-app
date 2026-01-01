@@ -80,9 +80,9 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Welcome back</h1>
+          <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Sign in to your account to continue
+            Entre na sua conta para continuar
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export function LoginForm({
                 />
               </svg>
             )}
-            Continue with Google
+            Continue com Google
           </Button>
           <Button 
             variant="outline" 
@@ -135,10 +135,10 @@ export function LoginForm({
                 />
               </svg>
             )}
-            Continue with GitHub
+            Continue com GitHub
           </Button>
         </Field>
-        <FieldSeparator>Or continue with email</FieldSeparator>
+        <FieldSeparator>Ou continue com email</FieldSeparator>
         <form onSubmit={handleMagicLink}>
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -155,15 +155,15 @@ export function LoginForm({
           <Field className="mt-4">
             <Button type="submit" className="w-full cursor-pointer" disabled={isLoading || isGoogleLoading || isGithubLoading}>
               {isLoading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Mail className="size-4 mr-2" />}
-              {isLoading ? "Sending..." : "Send Magic Link"}
+              {isLoading ? "Enviando..." : "Enviar Link de Acesso"}
             </Button>
           </Field>
         </form>
 
         <FieldDescription className="text-center text-xs text-muted-foreground">
-          We&apos;ll send you a magic link to sign in instantly.
+          Enviaremos um link mágico para você entrar instantaneamente.
           <br />
-          No password required.
+          Sem senha necessária.
         </FieldDescription>
       </FieldGroup>
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>

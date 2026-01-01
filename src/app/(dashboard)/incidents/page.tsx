@@ -77,7 +77,13 @@ export default function IncidentsPage() {
   }
 
   const getStatusLabel = (status: string) => {
-    return status.charAt(0).toUpperCase() + status.slice(1)
+    const labels: Record<string, string> = {
+      investigating: "Investigando",
+      identified: "Identificado",
+      monitoring: "Monitorando",
+      resolved: "Resolvido"
+    }
+    return labels[status] || status.charAt(0).toUpperCase() + status.slice(1)
   }
 
   // Filter Incidents
@@ -97,7 +103,7 @@ export default function IncidentsPage() {
       <header className="flex h-14 items-center gap-4 border-b px-4">
         <SidebarTrigger />
         <div className="flex-1" />
-        <h1 className="text-lg font-semibold">Incidents</h1>
+        <h1 className="text-lg font-semibold">Incidentes</h1>
       </header>
 
       {/* Main Content */}
@@ -109,8 +115,8 @@ export default function IncidentsPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search incidents..."
-                aria-label="Search incidents"
+                placeholder="Buscar incidentes..."
+                aria-label="Buscar incidentes"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -123,11 +129,11 @@ export default function IncidentsPage() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="investigating">Investigating</SelectItem>
-                <SelectItem value="identified">Identified</SelectItem>
-                <SelectItem value="monitoring">Monitoring</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="investigating">Investigando</SelectItem>
+                <SelectItem value="identified">Identificado</SelectItem>
+                <SelectItem value="monitoring">Monitorando</SelectItem>
+                <SelectItem value="resolved">Resolvido</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -141,8 +147,8 @@ export default function IncidentsPage() {
         ) : incidents.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Start Incident Tracking</CardTitle>
-              <CardDescription>Incidents são criados automaticamente quando um endpoint tem problema.</CardDescription>
+              <CardTitle>Rastreamento de Incidentes</CardTitle>
+              <CardDescription>Incidentes são criados automaticamente quando um endpoint tem problema.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center gap-4 border rounded-lg p-10 text-center">
@@ -150,7 +156,7 @@ export default function IncidentsPage() {
                   <AlertTriangle className="size-6 text-muted-foreground" />
                 </div>
                 <div className="space-y-1">
-                  <div className="text-lg font-semibold">No incidents yet</div>
+                  <div className="text-lg font-semibold">Nenhum incidente ainda</div>
                   <div className="text-sm text-muted-foreground">Adicione endpoints para monitorar e gerar incidents automaticamente.</div>
                 </div>
               </div>
@@ -159,21 +165,21 @@ export default function IncidentsPage() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>All Incidents</CardTitle>
+              <CardTitle>Todos os Incidentes</CardTitle>
               <CardDescription>
-                {filteredIncidents.length} incident{filteredIncidents.length !== 1 ? "s" : ""} found
+                {filteredIncidents.length} incidente{filteredIncidents.length !== 1 ? "s" : ""} encontrado{filteredIncidents.length !== 1 ? "s" : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[300px]">Incident</TableHead>
+                    <TableHead className="w-[300px]">Incidente</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Impact</TableHead>
-                    <TableHead>Affected Components</TableHead>
-                    <TableHead>Started</TableHead>
-                    <TableHead>Last Updated</TableHead>
+                    <TableHead>Impacto</TableHead>
+                    <TableHead>Componentes Afetados</TableHead>
+                    <TableHead>Início</TableHead>
+                    <TableHead>Última Atualização</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -198,7 +204,9 @@ export default function IncidentsPage() {
                           incident.impact === "major" ? "text-orange-500" :
                             "text-muted-foreground"
                           }`}>
-                          {incident.impact}
+                          {incident.impact === "critical" ? "Crítico" :
+                            incident.impact === "major" ? "Maior" :
+                            incident.impact === "minor" ? "Menor" : "Nenhum"}
                         </span>
                       </TableCell>
                       <TableCell>

@@ -50,6 +50,28 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
 export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
+  
+  // Get status page before deleting to notify with details
+  const statusPage = await prisma.statusPage.findUnique({ where: { id } })
+  
   await prisma.statusPage.delete({ where: { id } })
+
+  // Notify SSE clients about deleted status page
+  if (statusPage) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sse/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'statuspage_deleted',
+          statusPageId: id,
+          userId: statusPage.userId,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to notify SSE:', error)
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }

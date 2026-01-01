@@ -18,9 +18,14 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useActiveIncidents } from "@/hooks/use-active-incidents"
 
-const data = {
-  navMain: [
+export function AppSidebar({ userPlan = "free", ...props }: React.ComponentProps<typeof Sidebar> & { userPlan?: string }) {
+  const { state } = useSidebar()
+  const isCollapsed = state === "collapsed"
+  const activeIncidentsCount = useActiveIncidents()
+
+  const navItems = [
     {
       title: "Endpoints",
       url: "/",
@@ -28,21 +33,17 @@ const data = {
       isActive: true,
     },
     {
-      title: "Status Pages",
+      title: "Páginas de Status",
       url: "/status-pages",
       icon: ProportionsIcon,
     },
     {
-      title: "Incidents",
+      title: "Incidentes",
       url: "/incidents",
       icon: MessageCircleWarning,
+      badge: activeIncidentsCount,
     },
-  ],
-}
-
-export function AppSidebar({ userPlan = "free", ...props }: React.ComponentProps<typeof Sidebar> & { userPlan?: string }) {
-  const { state } = useSidebar()
-  const isCollapsed = state === "collapsed"
+  ]
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -54,7 +55,7 @@ export function AppSidebar({ userPlan = "free", ...props }: React.ComponentProps
         )}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser userPlan={userPlan} />

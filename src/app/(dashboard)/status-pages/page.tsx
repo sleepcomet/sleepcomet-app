@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -61,6 +61,44 @@ export default function StatusPagesPage() {
     },
     refetchOnWindowFocus: true,
   })
+
+  // SSE listener for real-time updates
+  useEffect(() => {
+    const eventSource = new EventSource('/api/sse/stream')
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+
+        if (data.type === 'connected') return
+
+        if (data.type === 'statuspage_created') {
+          // Add new status page to the list
+          queryClient.setQueryData(['status-pages'], (old: StatusPage[] | undefined) => {
+            if (!old) return [data.statusPage]
+            // Check if status page already exists to avoid duplicates
+            const exists = old.some(page => page.id === data.statusPage.id)
+            if (exists) return old
+            return [data.statusPage, ...old]
+          })
+        }
+
+        if (data.type === 'statuspage_deleted') {
+          // Remove status page from the list
+          queryClient.setQueryData(['status-pages'], (old: StatusPage[] | undefined) => {
+            if (!old) return old
+            return old.filter(page => page.id !== data.statusPageId)
+          })
+        }
+      } catch (error) {
+        console.error('SSE parse error:', error)
+      }
+    }
+
+    return () => {
+      eventSource.close()
+    }
+  }, [queryClient])
 
   // Filter status pages
   const filteredPages = pages.filter((page) => {
@@ -135,8 +173,8 @@ export default function StatusPagesPage() {
         ) : pages.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Create Your First Status Page</CardTitle>
-              <CardDescription>Publish uptime and incidents for your users.</CardDescription>
+              <CardTitle>Crie Sua Primeira Página de Status</CardTitle>
+              <CardDescription>Publique uptime e incidentes para seus usuários.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center gap-4 border rounded-lg p-10 text-center">
@@ -144,13 +182,13 @@ export default function StatusPagesPage() {
                   <ProportionsIcon className="size-6 text-muted-foreground" />
                 </div>
                 <div className="space-y-1">
-                  <div className="text-lg font-semibold">No status pages yet</div>
-                  <div className="text-sm text-muted-foreground">Create a public or private page to share status updates.</div>
+                  <div className="text-lg font-semibold">Nenhuma página de status ainda</div>
+                  <div className="text-sm text-muted-foreground">Crie uma página pública ou privada para compartilhar atualizações.</div>
                 </div>
                 <Button asChild>
                   <Link href="/status-pages/new">
                     <Plus className="size-4 mr-2" />
-                    New Status Page
+                    Nova Página de Status
                   </Link>
                 </Button>
               </div>
@@ -159,21 +197,21 @@ export default function StatusPagesPage() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>All Status Pages</CardTitle>
+              <CardTitle>Todas as Páginas de status</CardTitle>
               <CardDescription>
-                {error ? "" : `${filteredPages.length} status page${filteredPages.length !== 1 ? "s" : ""} found`}
+                {error ? "" : `${filteredPages.length} página${filteredPages.length !== 1 ? "s" : ""} encontrada${filteredPages.length !== 1 ? "s" : ""}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Visibility</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Domínio</TableHead>
+                    <TableHead>Visibilidade</TableHead>
                     <TableHead>Endpoints</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Last Updated</TableHead>
+                    <TableHead>Última Atualização</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -197,7 +235,7 @@ export default function StatusPagesPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={page.visibility === "public" ? "outline" : "secondary"}>
-                          {page.visibility === "public" ? "Public" : "Private"}
+                          {page.visibility === "public" ? "Pública" : "Privada"}
                         </Badge>
                       </TableCell>
                       <TableCell>—</TableCell>
@@ -221,7 +259,7 @@ export default function StatusPagesPage() {
                               }}
                             >
                               <ExternalLink className="size-4 mr-2" />
-                              Visit Page
+                              Visitar Página
                             </Button>
                             <Button
                               variant="ghost"
@@ -233,7 +271,7 @@ export default function StatusPagesPage() {
                               }}
                             >
                               <Eye className="size-4 mr-2" />
-                              View Details
+                              Ver Detalhes
                             </Button>
                             <Button
                               variant="ghost"
@@ -245,7 +283,7 @@ export default function StatusPagesPage() {
                               }}
                             >
                               <Pencil className="size-4 mr-2" />
-                              Edit
+                              Editar
                             </Button>
                             <Button
                               variant="ghost"
@@ -254,7 +292,7 @@ export default function StatusPagesPage() {
                               onClick={(e) => handleDelete(page.id, e)}
                             >
                               <Trash2 className="size-4 mr-2" />
-                              Delete
+                              Excluir
                             </Button>
                           </PopoverContent>
                         </Popover>

@@ -22,13 +22,13 @@ type StatusPage = { id: string; name: string; slug: string; visibility: "public"
 function getStatusBadge(status: string) {
   switch (status) {
     case "operational":
-      return <Badge variant="default">● Operational</Badge>
+      return <Badge variant="default">● Operacional</Badge>
     case "degraded":
-      return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">● Degraded</Badge>
+      return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">● Degradado</Badge>
     case "outage":
-      return <Badge variant="destructive">● Outage</Badge>
+      return <Badge variant="destructive">● Interrupção</Badge>
     default:
-      return <Badge variant="outline">● Unknown</Badge>
+      return <Badge variant="outline">● Desconhecido</Badge>
   }
 }
 
@@ -53,11 +53,11 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
         <SidebarTrigger />
         <Link href="/status-pages" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
-          Back
+          Voltar
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{page?.name || "Status Page"}</h1>
+          <h1 className="text-lg font-semibold">{page?.name || "Página de Status"}</h1>
           {getStatusBadge(page?.status || "operational")}
         </div>
       </header>
@@ -72,8 +72,8 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{page?.status || "operational"}</div>
-              <p className="text-xs text-muted-foreground">Current status</p>
+              <div className="text-2xl font-bold capitalize">{page?.status || "operacional"}</div>
+              <p className="text-xs text-muted-foreground">Status atual</p>
             </CardContent>
           </Card>
 
@@ -84,29 +84,29 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{page?.endpoints?.length || 0}</div>
-              <p className="text-xs text-muted-foreground">Monitored endpoints</p>
+              <p className="text-xs text-muted-foreground">Endpoints monitorados</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
+              <CardTitle className="text-sm font-medium">Inscritos</CardTitle>
               <Users className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">—</div>
-              <p className="text-xs text-muted-foreground">Email subscribers</p>
+              <p className="text-xs text-muted-foreground">Inscritos por email</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Incidents</CardTitle>
+              <CardTitle className="text-sm font-medium">Incidentes</CardTitle>
               <AlertTriangle className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">—</div>
-              <p className="text-xs text-muted-foreground">Recent incidents</p>
+              <p className="text-xs text-muted-foreground">Incidentes recentes</p>
             </CardContent>
           </Card>
         </div>
@@ -117,12 +117,12 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
             <div>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Settings className="size-4" />
-                Page Settings
+                Configurações da Página
               </CardTitle>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/status-pages/${id}/edit`}>
-                Edit Settings
+                Editar Configurações
               </Link>
             </Button>
           </CardHeader>
@@ -140,11 +140,11 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
               </a>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Visibility</span>
+              <span className="text-muted-foreground">Visibilidade</span>
               <span className="capitalize">{page?.visibility || "public"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Last Updated</span>
+              <span className="text-muted-foreground">Última Atualização</span>
               <span>{page?.updated_at ? new Date(page.updated_at).toLocaleString() : "—"}</span>
             </div>
           </CardContent>
@@ -154,13 +154,13 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Endpoints</CardTitle>
-            <CardDescription>Endpoints displayed on this status page</CardDescription>
+            <CardDescription>Endpoints exibidos nesta página de status</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Nome</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Uptime</TableHead>
                 </TableRow>
@@ -171,7 +171,7 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
                     <TableCell className="font-medium">{endpoint.name}</TableCell>
                     <TableCell>
                       <Badge variant={endpoint.status === "up" ? "default" : "destructive"}>
-                        {endpoint.status === "up" ? "● Up" : "● Down"}
+                        {endpoint.status === "up" ? "● Online" : "● Offline"}
                       </Badge>
                     </TableCell>
                     <TableCell>{endpoint.uptime != null ? `${endpoint.uptime}%` : "—"}</TableCell>
@@ -184,11 +184,11 @@ export default function StatusPageDetails({ params }: { params: Promise<{ id: st
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Recent Incidents</CardTitle>
-            <CardDescription>Past and ongoing incidents</CardDescription>
+            <CardTitle className="text-sm font-medium">Incidentes Recentes</CardTitle>
+            <CardDescription>Incidentes passados e em andamento</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-4">No recent incidents</p>
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum incidente recente</p>
           </CardContent>
         </Card>
       </main>

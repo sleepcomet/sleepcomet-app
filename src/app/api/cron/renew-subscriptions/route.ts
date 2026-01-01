@@ -34,6 +34,28 @@ export async function GET(req: Request) {
     const tomorrow = new Date(now)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
+    // 1. CHECk FOR CANCELLATIONS
+    // Find subscriptions that should be cancelled (past due date and cancelAtPeriodEnd is true)
+    const expiredSubscriptions = await prisma.subscription.updateMany({
+        where: {
+            status: "active",
+            cancelAtPeriodEnd: true,
+            currentPeriodEnd: {
+                lte: now
+            }
+        },
+        data: {
+            status: "cancelled",
+            plan: "FREE",
+            autoRenew: false
+        }
+    })
+    
+    if (expiredSubscriptions.count > 0) {
+        console.log(`[CRON] Expired ${expiredSubscriptions.count} cancelled subscriptions`)
+    }
+
+    // 2. PROCESS RENEWALS AND PENDING CHANGES
     // Buscar assinaturas que precisam ser renovadas
     const subscriptionsToRenew = await prisma.subscription.findMany({
       where: {
@@ -78,21 +100,27 @@ export async function GET(req: Request) {
           throw new Error("No payment method saved")
         }
 
+        // DETERMINAR PLANO E INTERVALO EFETIVOS (Se tiver mudança pendente)
+        const effectivePlanSlug = subscription.pendingPlan || subscription.plan
+        const effectiveInterval = subscription.pendingInterval || subscription.interval
+        
         // Calcular valor baseado no plano e intervalo
-        const plan = PLANS[subscription.plan as keyof typeof PLANS]
+        const planKey = Object.keys(PLANS).find(key => PLANS[key as keyof typeof PLANS].slug === effectivePlanSlug) as keyof typeof PLANS 
+                        || (effectivePlanSlug.toUpperCase() as keyof typeof PLANS)
+        
+        const plan = PLANS[planKey]
         if (!plan) {
-          throw new Error("Invalid plan")
+          throw new Error(`Invalid plan: ${effectivePlanSlug}`)
         }
 
-        const amount = subscription.interval === "yearly" 
+        const amount = effectiveInterval === "yearly" 
           ? plan.prices.yearly 
           : plan.prices.monthly
 
         // Criar pagamento com cartão salvo
-        // Criar pagamento com cartão salvo
         const paymentData = {
           transaction_amount: amount,
-          description: `${plan.name} - Renovação ${subscription.interval === "yearly" ? "Anual" : "Mensal"}`,
+          description: `${plan.name} - Renovação ${effectiveInterval === "yearly" ? "Anual" : "Mensal"}`,
           payment_method_id: subscription.mpCardBrand || "visa",
           token: subscription.mpPaymentMethodId, // Usar token do cartão salvo
           payer: {
@@ -105,7 +133,7 @@ export async function GET(req: Request) {
 
         // Calcular novo período
         const newPeriodEnd = new Date(subscription.currentPeriodEnd || now)
-        if (subscription.interval === "yearly") {
+        if (effectiveInterval === "yearly") {
           newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1)
         } else {
           newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1)
@@ -115,11 +143,19 @@ export async function GET(req: Request) {
         await prisma.subscription.update({
           where: { id: subscription.id },
           data: {
+            // Se aprovado, confirma o NOVO plano/intervalo e limpa pendências
+            plan: payment.status === "approved" ? effectivePlanSlug : subscription.plan,
+            interval: payment.status === "approved" ? effectiveInterval : subscription.interval,
+            
             status: payment.status === "approved" ? "active" : "past_due",
             currentPeriodEnd: payment.status === "approved" ? newPeriodEnd : subscription.currentPeriodEnd,
             nextBillingDate: payment.status === "approved" ? newPeriodEnd : subscription.nextBillingDate,
             lastPaymentDate: payment.status === "approved" ? now : subscription.lastPaymentDate,
             lastPaymentAmount: payment.status === "approved" ? amount : subscription.lastPaymentAmount,
+            
+            // Limpa pendências se sucesso
+            pendingPlan: payment.status === "approved" ? null : subscription.pendingPlan,
+            pendingInterval: payment.status === "approved" ? null : subscription.pendingInterval
           },
         })
 
@@ -130,7 +166,7 @@ export async function GET(req: Request) {
             amount: amount,
             currency: "BRL",
             status: payment.status,
-            interval: subscription.interval,
+            interval: effectiveInterval || "monthly", // Fallback for types
             mpPaymentId: String(payment.id),
             mpStatus: payment.status,
             mpStatusDetail: payment.status_detail,

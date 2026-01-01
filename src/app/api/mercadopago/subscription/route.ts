@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
@@ -139,6 +140,47 @@ export async function POST(req: Request) {
         // We'll try to use the token directly for payment if save fails, but renewal won't work.
       }
     }
+
+    // CHECK FOR ACTIVE SUBSCRIPTION CHANGE (SCHEDULE INSTEAD OF CHARGE)
+    const isPaidSubscriptionActive = existingSubscription 
+      && existingSubscription.plan !== "FREE" 
+      && existingSubscription.status === "active"
+      && existingSubscription.currentPeriodEnd 
+      && existingSubscription.currentPeriodEnd > new Date()
+      // Ensure we are not just 'reactivating' a pending cancellation if that logic existed
+    
+    if (isPaidSubscriptionActive && existingSubscription) {
+      // Schedule the change
+      console.log(`[MP_SUBSCRIPTION] Scheduling change for user ${session.user.id} to ${planKey} (${interval})`)
+      
+      const updateData: Prisma.SubscriptionUpdateInput = {
+        pendingPlan: planKey,
+        pendingInterval: interval,
+        cancelAtPeriodEnd: false, // Reactivate if it was cancelling
+      }
+
+      // Update payment method if a new one was provided
+      if (savedCardId) {
+        updateData.mpPaymentMethodId = savedCardId
+        updateData.mpCardLastFour = cardLastFour
+        updateData.mpCardBrand = cardBrand
+      }
+
+      await prisma.subscription.update({
+        where: { id: existingSubscription.id },
+        data: updateData
+      })
+
+      return NextResponse.json({
+        success: true,
+        action: "scheduled",
+        message: "Mudança de plano agendada para o final do ciclo atual.",
+        nextBillingDate: existingSubscription.currentPeriodEnd
+      }, { headers: corsHeaders })
+    }
+    
+    // IF NO ACTIVE SUBSCRIPTION, PROCEED TO CHARGE IMMEDIATELY
+
 
     // Process Payment
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

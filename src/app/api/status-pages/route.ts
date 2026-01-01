@@ -60,6 +60,22 @@ export async function POST(req: Request) {
       },
       select: { id: true, name: true, slug: true, visibility: true, status: true, createdAt: true, updatedAt: true },
     })
+
+    // Notify SSE clients about new status page
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sse/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'statuspage_created',
+          statusPage: created,
+          userId: session.user.id,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to notify SSE:', error)
+    }
+
     return NextResponse.json(created, { status: 201 })
   } catch (err: unknown) {
     const msg = String((err as { message?: string })?.message || "")

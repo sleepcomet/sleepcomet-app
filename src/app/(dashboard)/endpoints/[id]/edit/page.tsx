@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useQueryClient } from "@tanstack/react-query"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,13 +16,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Globe, Clock, Bell, Shield } from "lucide-react"
+import { ArrowLeft, Globe, Clock, Bell, Shield, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-export default function NewEndpoint() {
+export default function EditEndpoint({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
-  const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(true)
 
   // Form state
   const [name, setName] = useState("")
@@ -33,33 +33,74 @@ export default function NewEndpoint() {
   const [alertsEnabled, setAlertsEnabled] = useState(true)
   const [sslVerification, setSslVerification] = useState(true)
 
+  // Fetch endpoint data
+  useEffect(() => {
+    const fetchEndpoint = async () => {
+      try {
+        const res = await fetch(`/api/endpoints/${id}`)
+        if (!res.ok) {
+          toast.error("Falha ao carregar endpoint")
+          router.push("/")
+          return
+        }
+        const endpoint = await res.json()
+        setName(endpoint.name || "")
+        setUrl(endpoint.url || "")
+        setInterval(endpoint.checkInterval?.toString() || "30")
+        setRequestTimeout(endpoint.requestTimeout?.toString() || "30")
+        setAlertsEnabled(endpoint.alertsEnabled ?? true)
+        setSslVerification(endpoint.sslVerification ?? true)
+      } catch {
+        toast.error("Erro ao carregar endpoint")
+        router.push("/")
+      } finally {
+        setIsFetching(false)
+      }
+    }
+
+    fetchEndpoint()
+  }, [id, router])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const res = await fetch("/api/endpoints", {
-        method: "POST",
+      const res = await fetch(`/api/endpoints/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, url }),
+        body: JSON.stringify({ 
+          name, 
+          url,
+          checkInterval: parseInt(interval),
+          requestTimeout: parseInt(requestTimeout),
+          alertsEnabled,
+          sslVerification
+        }),
       })
+      
       if (!res.ok) {
-        toast.error("Falha ao criar endpoint")
+        const error = await res.json()
+        toast.error(error.message || "Falha ao atualizar endpoint")
         setIsLoading(false)
         return
       }
       
-      // Invalidate endpoints query to force refresh
-      await queryClient.invalidateQueries({ queryKey: ['endpoints'] })
-      
-      toast.success("Endpoint criado com sucesso")
-      
-      // Redirect to endpoints list
-      router.push("/")
+      toast.success("Endpoint atualizado com sucesso")
+      router.push(`/endpoints/${id}`)
     } catch {
-      toast.error("Erro ao criar endpoint")
+      toast.error("Erro ao atualizar endpoint")
       setIsLoading(false)
     }
+  }
+
+  if (isFetching) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <Loader2 className="size-12 animate-spin text-muted-foreground" />
+        <p className="mt-4 text-muted-foreground">Carregando endpoint...</p>
+      </div>
+    )
   }
 
   return (
@@ -67,12 +108,12 @@ export default function NewEndpoint() {
       {/* Header */}
       <header className="flex h-14 items-center gap-4 border-b px-4">
         <SidebarTrigger />
-        <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <Link href={`/endpoints/${id}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
           Voltar
         </Link>
         <div className="flex-1" />
-        <h1 className="text-lg font-semibold">Novo Endpoint</h1>
+        <h1 className="text-lg font-semibold">Editar Endpoint</h1>
       </header>
 
       {/* Main Content */}
@@ -87,7 +128,7 @@ export default function NewEndpoint() {
                   Informações Básicas
                 </CardTitle>
                 <CardDescription>
-                  Insira os detalhes do endpoint que deseja monitorar
+                  Atualize os detalhes do endpoint
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -226,10 +267,10 @@ export default function NewEndpoint() {
             {/* Submit */}
             <div className="flex gap-3 justify-end">
               <Button type="button" variant="outline" asChild>
-                <Link href="/">Cancelar</Link>
+                <Link href={`/endpoints/${id}`}>Cancelar</Link>
               </Button>
               <Button type="submit" disabled={isLoading || !name || !url}>
-                {isLoading ? "Criando..." : "Criar Endpoint"}
+                {isLoading ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </div>
           </form>

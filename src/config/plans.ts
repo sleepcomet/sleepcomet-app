@@ -34,7 +34,7 @@ export const PLANS = {
     slug: 'solo',
     prices: {
       monthly: 19.90,
-      yearly: 190.80,
+      yearly: 15.90, // R$ 15.90/mês quando pago anualmente (R$ 190.80/ano)
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_SOLO_MONTHLY || '',
@@ -62,7 +62,7 @@ export const PLANS = {
     slug: 'pro',
     prices: {
       monthly: 39.90,
-      yearly: 382.80,
+      yearly: 31.90, // R$ 31.90/mês quando pago anualmente (R$ 382.80/ano)
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_PRO_MONTHLY || '',
@@ -90,7 +90,7 @@ export const PLANS = {
     slug: 'business',
     prices: {
       monthly: 99.90,
-      yearly: 958.80,
+      yearly: 79.90, // R$ 79.90/mês quando pago anualmente (R$ 958.80/ano)
     },
     mpPlanIds: {
       monthly: process.env.MP_PLAN_ID_BUSINESS_MONTHLY || '',

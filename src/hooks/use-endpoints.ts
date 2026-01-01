@@ -98,6 +98,27 @@ export function useEndpoints() {
 
         if (data.type === 'connected') return
 
+        if (data.type === 'endpoint_created') {
+          // Add new endpoint to the list
+          queryClient.setQueryData(['endpoints'], (old: Endpoint[] | undefined) => {
+            if (!old) return [data.endpoint]
+            // Check if endpoint already exists to avoid duplicates
+            const exists = old.some(ep => ep.id === data.endpoint.id)
+            if (exists) return old
+            return [data.endpoint, ...old]
+          })
+        }
+
+        if (data.type === 'endpoint_deleted') {
+          // Remove endpoint from the list
+          queryClient.setQueryData(['endpoints'], (old: Endpoint[] | undefined) => {
+            if (!old) return old
+            return old.filter(ep => ep.id !== data.endpointId)
+          })
+          // Also invalidate the individual endpoint query
+          queryClient.removeQueries({ queryKey: ['endpoint', data.endpointId] })
+        }
+
         if (data.type === 'endpoint_update') {
           // Update the endpoints list cache
           queryClient.setQueryData(['endpoints'], (old: Endpoint[] | undefined) => {

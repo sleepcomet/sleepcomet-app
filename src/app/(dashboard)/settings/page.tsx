@@ -48,7 +48,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ fileName: file.name, contentType: file.type || "application/octet-stream" }),
       })
       if (!presignRes.ok) { 
-        toast.error("Failed to get upload URL")
+        toast.error("Falha ao obter URL de upload")
         setIsUploading(false)
         return 
       }
@@ -59,7 +59,7 @@ export default function SettingsPage() {
         body: file,
       })
       if (!putRes.ok) { 
-        toast.error("Failed to upload image")
+        toast.error("Falha ao enviar imagem")
         setIsUploading(false)
         return 
       }
@@ -69,9 +69,9 @@ export default function SettingsPage() {
       })
       
       setImage(fileUrl)
-      toast.success("Avatar updated successfully")
+      toast.success("Avatar atualizado com sucesso")
     } catch (err) {
-      toast.error("An error occurred")
+      toast.error("Ocorreu um erro")
       console.error(err)
     } finally {
       setIsUploading(false)
@@ -85,9 +85,9 @@ export default function SettingsPage() {
       await authClient.updateUser({
         name: name
       })
-      toast.success("Profile updated successfully")
+      toast.success("Perfil atualizado com sucesso")
     } catch (err) {
-      toast.error("Failed to update profile")
+      toast.error("Falha ao atualizar perfil")
       console.error(err)
     } finally {
       setIsSaving(false)
@@ -100,16 +100,16 @@ export default function SettingsPage() {
       <header className="flex h-14 items-center gap-4 border-b px-4">
         <SidebarTrigger />
         <div className="flex-1" />
-        <h1 className="text-lg font-semibold">Settings</h1>
+        <h1 className="text-lg font-semibold">Configurações</h1>
       </header>
 
       <main className="flex-1 p-4 space-y-6 max-w-4xl mx-auto w-full">
         {/* Profile Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
+            <CardTitle>Perfil</CardTitle>
             <CardDescription>
-              Manage your public profile and account details.
+              Gerencie seu perfil público e detalhes da conta.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -125,13 +125,13 @@ export default function SettingsPage() {
                 </Avatar>
               )}
               <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={handleAvatarClick} disabled={isUploading}>{isUploading ? (<Loader2 className="size-4 animate-spin" />) : ("Change Avatar")}</Button>
+                <Button variant="outline" onClick={handleAvatarClick} disabled={isUploading}>{isUploading ? (<Loader2 className="size-4 animate-spin" />) : ("Alterar Avatar")}</Button>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Display Name</Label>
+                <Label htmlFor="name">Nome de Exibição</Label>
                 {isLoading ? (
                   <div className="flex h-9 w-full items-center justify-start rounded-md border border-input bg-transparent px-3 py-1 shadow-sm">
                     <Loader2 className="size-4 animate-spin text-muted-foreground" />
@@ -153,24 +153,24 @@ export default function SettingsPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
-            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : "Save Changes"}</Button>
+            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : "Salvar Alterações"}</Button>
           </CardFooter>
         </Card>
 
         {/* Appearance Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Appearance</CardTitle>
+            <CardTitle>Aparência</CardTitle>
             <CardDescription>
-              Customize the look and feel of the dashboard.
+              Personalize a aparência do painel.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <Label>Theme</Label>
+                <Label>Tema</Label>
                 <div className="text-sm text-muted-foreground">
-                  Select the theme for the dashboard.
+                  Selecione o tema para o painel.
                 </div>
               </div>
               <ThemeSelect />
@@ -181,17 +181,17 @@ export default function SettingsPage() {
         {/* Notifications */}
         <Card>
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
+            <CardTitle>Notificações</CardTitle>
             <CardDescription>
-              Configure how you receive alerts and updates.
+              Configure como você recebe alertas e atualizações.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between space-x-2">
               <div className="space-y-1">
-                <Label htmlFor="email-alerts">Email Alerts</Label>
+                <Label htmlFor="email-alerts">Alertas por Email</Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive emails when monitored endpoints go down.
+                  Receba emails quando endpoints monitorados ficarem fora do ar.
                 </p>
               </div>
               <Switch

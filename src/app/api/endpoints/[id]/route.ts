@@ -177,8 +177,68 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   return NextResponse.json({ ...ep, metrics })
 }
 
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params
+  
+  try {
+    const body = await req.json()
+    const { name, url, checkInterval, requestTimeout, alertsEnabled, sslVerification } = body
+
+    // Validate required fields
+    if (!name || !url) {
+      return NextResponse.json(
+        { message: "Nome e URL são obrigatórios" },
+        { status: 400 }
+      )
+    }
+
+    // Update endpoint
+    const updated = await prisma.endpoint.update({
+      where: { id },
+      data: {
+        name,
+        url,
+        ...(checkInterval !== undefined && { checkInterval }),
+        ...(requestTimeout !== undefined && { requestTimeout }),
+        ...(alertsEnabled !== undefined && { alertsEnabled }),
+        ...(sslVerification !== undefined && { sslVerification }),
+      },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("Error updating endpoint:", error)
+    return NextResponse.json(
+      { message: "Erro ao atualizar endpoint" },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
+  
+  // Get endpoint before deleting to notify with details
+  const endpoint = await prisma.endpoint.findUnique({ where: { id } })
+  
   await prisma.endpoint.delete({ where: { id } })
+
+  // Notify SSE clients about deleted endpoint
+  if (endpoint) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sse/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'endpoint_deleted',
+          endpointId: id,
+          userId: endpoint.userId,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to notify SSE:', error)
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }

@@ -32,6 +32,7 @@ import {
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Globe, Loader2 } from "lucide-react"
 import { CheckoutHandler } from "@/components/checkout-handler"
 import { useEndpoints } from "@/hooks/use-endpoints"
+import { NextCheckCountdown } from "@/components/next-check-countdown"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -80,8 +81,8 @@ export default function Dashboard() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search endpoints..."
-                aria-label="Search endpoints"
+                placeholder="Buscar endpoints..."
+                aria-label="Buscar endpoints"
                 autoComplete="off"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -95,9 +96,9 @@ export default function Dashboard() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="up">Up</SelectItem>
-                <SelectItem value="down">Down</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="up">Online</SelectItem>
+                <SelectItem value="down">Offline</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -106,7 +107,7 @@ export default function Dashboard() {
           <Button asChild>
             <Link href="/endpoints/new">
               <Plus className="size-4 mr-2" />
-              New Endpoint
+              Novo Endpoint
             </Link>
           </Button>
         </div>
@@ -119,8 +120,8 @@ export default function Dashboard() {
         ) : endpoints.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Start Monitoring</CardTitle>
-              <CardDescription>Add your first endpoint to begin tracking uptime and performance.</CardDescription>
+              <CardTitle>Comece a Monitorar</CardTitle>
+              <CardDescription>Adicione seu primeiro endpoint para começar a monitorar uptime e performance.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center gap-4 border rounded-lg p-10 text-center">
@@ -128,13 +129,13 @@ export default function Dashboard() {
                   <Globe className="size-6 text-muted-foreground" />
                 </div>
                 <div className="space-y-1">
-                  <div className="text-lg font-semibold">No endpoints yet</div>
-                  <div className="text-sm text-muted-foreground">Create an endpoint to see real-time status and analytics.</div>
+                  <div className="text-lg font-semibold">Nenhum endpoint ainda</div>
+                  <div className="text-sm text-muted-foreground">Crie um endpoint para ver status e métricas em tempo real.</div>
                 </div>
                 <Button asChild>
                   <Link href="/endpoints/new">
                     <Plus className="size-4 mr-2" />
-                    New Endpoint
+                    Novo Endpoint
                   </Link>
                 </Button>
               </div>
@@ -143,21 +144,21 @@ export default function Dashboard() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>All Endpoints</CardTitle>
+              <CardTitle>Todos os Endpoints</CardTitle>
               <CardDescription>
-                {`${filteredEndpoints.length} endpoint${filteredEndpoints.length !== 1 ? "s" : ""} found`}
+                {`${filteredEndpoints.length} endpoint${filteredEndpoints.length !== 1 ? "s" : ""} encontrado${filteredEndpoints.length !== 1 ? "s" : ""}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Nome</TableHead>
                     <TableHead>URL</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Uptime</TableHead>
-                    <TableHead>Response</TableHead>
-                    <TableHead>Last Check</TableHead>
+                    <TableHead>Próxima Checagem</TableHead>
+                    <TableHead>Última Checagem</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -165,7 +166,7 @@ export default function Dashboard() {
                   {error && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-destructive py-8">
-                        Failed to load endpoints
+                        Falha ao carregar endpoints
                       </TableCell>
                     </TableRow>
                   )}
@@ -181,11 +182,16 @@ export default function Dashboard() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={endpoint.status === "up" ? "default" : "destructive"}>
-                          {endpoint.status === "up" ? "● Up" : "● Down"}
+                          {endpoint.status === "up" ? "● Online" : "● Offline"}
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">{endpoint.uptime ? `${endpoint.uptime.toFixed(2)}%` : "—"}</TableCell>
-                      <TableCell className="tabular-nums">—</TableCell>
+                      <TableCell>
+                        <NextCheckCountdown 
+                          lastCheck={endpoint.lastCheck} 
+                          checkInterval={endpoint.checkInterval || 300}
+                        />
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{endpoint.lastCheck ? new Date(endpoint.lastCheck).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <Popover>
@@ -205,7 +211,7 @@ export default function Dashboard() {
                               }}
                             >
                               <Eye className="size-4 mr-2" />
-                              View Details
+                              Ver Detalhes
                             </Button>
                             <Button
                               variant="ghost"
@@ -217,7 +223,7 @@ export default function Dashboard() {
                               }}
                             >
                               <Pencil className="size-4 mr-2" />
-                              Edit
+                              Editar
                             </Button>
                             <Button
                               variant="ghost"
@@ -226,7 +232,7 @@ export default function Dashboard() {
                               onClick={(e) => handleDelete(endpoint.id, e)}
                             >
                               <Trash2 className="size-4 mr-2" />
-                              Delete
+                              Excluir
                             </Button>
                           </PopoverContent>
                         </Popover>

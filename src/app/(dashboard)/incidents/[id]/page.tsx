@@ -49,12 +49,12 @@ function getStatusBadgeVariant(status: Incident["status"]): "default" | "seconda
         <SidebarTrigger />
         <Link href="/incidents" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-4" />
-          Back
+          Voltar
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">{incident?.title || "Incident"}</h1>
-          <Badge variant={getStatusBadgeVariant(incident?.status || "resolved")}>{(incident?.status || "resolved").replace(/^./, (c) => c.toUpperCase())}</Badge>
+          <h1 className="text-lg font-semibold">{incident?.title || "Incidente"}</h1>
+          <Badge variant={getStatusBadgeVariant(incident?.status || "resolved")}>{(incident?.status || "resolvido").replace(/^./, (c) => c.toUpperCase())}</Badge>
         </div>
       </header>
 
@@ -66,49 +66,49 @@ function getStatusBadgeVariant(status: Incident["status"]): "default" | "seconda
               <Activity className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{incident?.status || "resolved"}</div>
-              <p className="text-xs text-muted-foreground">Current status</p>
+              <div className="text-2xl font-bold capitalize">{incident?.status || "resolvido"}</div>
+              <p className="text-xs text-muted-foreground">Status atual</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Impact</CardTitle>
+              <CardTitle className="text-sm font-medium">Impacto</CardTitle>
               <AlertTriangle className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{incident?.impact || "none"}</div>
-              <p className="text-xs text-muted-foreground">User impact</p>
+              <div className="text-2xl font-bold capitalize">{incident?.impact || "nenhum"}</div>
+              <p className="text-xs text-muted-foreground">Impacto no usuário</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Started</CardTitle>
+              <CardTitle className="text-sm font-medium">Início</CardTitle>
               <Clock className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{incident?.startedAt || "—"}</div>
-              <p className="text-xs text-muted-foreground">Incident start time</p>
+              <p className="text-xs text-muted-foreground">Hora de início</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Last Update</CardTitle>
+              <CardTitle className="text-sm font-medium">Última Atualização</CardTitle>
               <Clock className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{incident?.updatedAt || "—"}</div>
-              <p className="text-xs text-muted-foreground">Most recent update</p>
+              <p className="text-xs text-muted-foreground">Atualização mais recente</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Affected Components</CardTitle>
-            <CardDescription>Systems impacted by this incident</CardDescription>
+            <CardTitle className="text-sm font-medium">Componentes Afetados</CardTitle>
+            <CardDescription>Sistemas impactados por este incidente</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-1">
@@ -124,15 +124,15 @@ function getStatusBadgeVariant(status: Incident["status"]): "default" | "seconda
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Timeline</CardTitle>
-            <CardDescription>Updates and progress</CardDescription>
+            <CardTitle className="text-sm font-medium">Linha do Tempo</CardTitle>
+            <CardDescription>Atualizações e progresso</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Update</TableHead>
+                  <TableHead>Hora</TableHead>
+                  <TableHead>Atualização</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -144,7 +144,7 @@ function getStatusBadgeVariant(status: Incident["status"]): "default" | "seconda
                 ))}
                 {(!incident || !incident.timeline || incident.timeline.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground py-6">No updates</TableCell>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground py-6">Sem atualizações</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -154,7 +154,7 @@ function getStatusBadgeVariant(status: Incident["status"]): "default" | "seconda
 
         <div className="flex justify-end">
           <Button variant="outline" asChild>
-            <Link href="/incidents">Back to Incidents</Link>
+            <Link href="/incidents">Voltar para Incidentes</Link>
           </Button>
         </div>
       </main>
