@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
@@ -34,6 +34,8 @@ import { CheckoutHandler } from "@/components/checkout-handler"
 import { useEndpoints } from "@/hooks/use-endpoints"
 import { NextCheckCountdown } from "@/components/next-check-countdown"
 
+export const dynamic = "force-dynamic"
+
 export default function Dashboard() {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -64,7 +66,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <CheckoutHandler />
+      <Suspense fallback={null}>
+        <CheckoutHandler />
+      </Suspense>
       {/* Header */}
       <header className="flex h-14 items-center gap-4 border-b px-4">
         <SidebarTrigger />

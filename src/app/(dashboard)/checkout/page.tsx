@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
+export const dynamic = "force-dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ArrowLeft, 
@@ -85,7 +86,7 @@ interface PaymentData {
   transactionAmount: number
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -423,5 +424,13 @@ export default function CheckoutPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+      <CheckoutContent />
+    </Suspense>
   )
 }
