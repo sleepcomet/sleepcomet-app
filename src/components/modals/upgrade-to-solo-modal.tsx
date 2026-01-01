@@ -84,7 +84,7 @@ export function UpgradeModal({
                 {billingCycle === 'yearly' && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-foreground/80 font-medium">
-                      Equivalente a <span className="text-foreground font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price)}</span>/mês
+                      Equivalente a<span className="text-foreground font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price)}</span>/mês
                     </p>
                     <Badge variant="secondary" className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-200 dark:border-green-900 dark:text-green-400">
                       Economia de 20% inclusa
