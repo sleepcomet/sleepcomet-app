@@ -45,7 +45,7 @@ export default async function BillingPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <header className="flex h-14 items-center gap-4 border-b px-4">
+      <header className="flex h-14 items-center gap-4 border-b px-5">
         <SidebarTrigger />
         <div className="flex-1" />
         <h1 className="text-lg font-semibold">Faturamento</h1>
