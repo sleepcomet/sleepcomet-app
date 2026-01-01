@@ -231,7 +231,7 @@ export default function StatusPagesPage() {
                     >
                       <TableCell className="font-medium">{page.name}</TableCell>
                       <TableCell className="text-muted-foreground text-sm font-mono">
-                        {process.env.NEXT_PUBLIC_STATUS_URL}/{page.slug}
+                        {(process.env.NEXT_PUBLIC_STATUS_URL || "https://status.sleepcomet.com")}/{page.slug}
                       </TableCell>
                       <TableCell>
                         <Badge variant={page.visibility === "public" ? "outline" : "secondary"}>
@@ -255,7 +255,7 @@ export default function StatusPagesPage() {
                               className="w-full justify-start"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                window.open(`${process.env.NEXT_PUBLIC_STATUS_URL}/${page.slug}`, "_blank")
+                                window.open(`${process.env.NEXT_PUBLIC_STATUS_URL || "https://status.sleepcomet.com"}/${page.slug}`, "_blank")
                               }}
                             >
                               <ExternalLink className="size-4 mr-2" />

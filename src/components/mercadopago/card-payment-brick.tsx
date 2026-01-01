@@ -56,7 +56,7 @@ export function CardPaymentBrick({
           })
         }
 
-        const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY
+        const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || ""
         if (!publicKey) {
           throw new Error("Mercado Pago public key not configured")
         }
