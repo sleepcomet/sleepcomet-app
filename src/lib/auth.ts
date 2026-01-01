@@ -31,6 +31,8 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_CONSOLE_URL,
     process.env.NEXT_PUBLIC_WEBSITE_URL,
+    // Add www variant
+    process.env.NEXT_PUBLIC_WEBSITE_URL?.replace('://', '://www.'),
     process.env.ALLOWED_ORIGIN_1,
     process.env.ALLOWED_ORIGIN_2,
     "http://localhost:3000",
