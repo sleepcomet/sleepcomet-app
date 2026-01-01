@@ -15,6 +15,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/:slug',
+        destination: '/status/:slug',
+        has: [
+          {
+            type: 'host',
+            value: 'status.sleepcomet.com',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {
