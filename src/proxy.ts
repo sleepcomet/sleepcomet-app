@@ -31,12 +31,20 @@ export default async function middleware(request: NextRequest) {
     const origin = request.headers.get('origin')
     
     // Define allowed origins
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL
     const allowedOrigins = [
-      process.env.NEXT_PUBLIC_WEBSITE_URL,
-      process.env.NEXT_PUBLIC_WEBSITE_URL?.replace('://', '://www.'),
+      websiteUrl,
+      // Add both www and non-www variants
+      websiteUrl?.includes('://www.') 
+        ? websiteUrl.replace('://www.', '://') 
+        : websiteUrl?.replace('://', '://www.'),
       'http://localhost:3001',
       'http://localhost:3000',
     ].filter(Boolean) as string[]
+
+    // Debug: log allowed origins and incoming origin
+    console.log('[CORS Debug] Allowed origins:', allowedOrigins)
+    console.log('[CORS Debug] Incoming origin:', origin)
 
     // Check if the origin is allowed
     const isAllowedOrigin = origin && allowedOrigins.includes(origin)
